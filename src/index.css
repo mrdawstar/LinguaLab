@@ -244,6 +244,33 @@
     @apply h-9 w-9 rounded-full bg-gradient-primary flex items-center justify-center text-white dark:text-black font-medium text-sm;
   }
 
+  /* Mobile Nav Enhancements */
+  .app-mobile-nav {
+    @apply overflow-hidden;
+  }
+
+  .app-mobile-nav nav {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+
+  .app-mobile-nav nav::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .app-mobile-nav nav::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .app-mobile-nav nav::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border));
+    border-radius: 20px;
+  }
+
+  .app-mobile-nav nav::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground));
+  }
+
 
   /* Badge styles */
   .badge-success {

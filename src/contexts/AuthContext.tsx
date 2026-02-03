@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { getEmailRedirectUrl } from '@/lib/auth-utils';
 
 export type UserRole = 'admin' | 'teacher' | 'manager';
 
@@ -264,7 +265,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           full_name: fullName,
           school_name: schoolName,
         },
-        emailRedirectTo: `${window.location.origin}/`,
+        emailRedirectTo: getEmailRedirectUrl(),
       },
     });
     return { error: error ?? null };

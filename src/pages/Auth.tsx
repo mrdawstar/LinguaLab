@@ -7,6 +7,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn, validateEmailFormat, validateEmailExists } from '@/lib/utils';
+import { getEmailRedirectUrl } from '@/lib/auth-utils';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
@@ -320,7 +321,7 @@ export default function Auth() {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/`,
+          emailRedirectTo: getEmailRedirectUrl(),
           data: {
             full_name: fullName,
             invitation_token: invitation.token,
@@ -461,7 +462,7 @@ export default function Auth() {
               full_name: fullName,
               school_name: schoolName,
             },
-            emailRedirectTo: `${window.location.origin}/`,
+            emailRedirectTo: getEmailRedirectUrl(),
           },
         });
         
