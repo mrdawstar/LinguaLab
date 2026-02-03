@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://lingualab.pl/sitemap.xml
+
+# Disallow admin and private routes
+Disallow: /admin/
+Disallow: /manager/
+Disallow: /teacher/
+Disallow: /auth
+Disallow: /subscription-success
+
+# Allow public pages
+Allow: /
+Allow: /privacy-policy

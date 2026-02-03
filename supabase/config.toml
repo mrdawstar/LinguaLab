@@ -1,0 +1,7 @@
+project_id = "pfopnlpwmhzqvpnpjxfk"
+
+[functions.send-invitation-email]
+verify_jwt = false
+
+[functions.send-package-warning-email]
+verify_jwt = false

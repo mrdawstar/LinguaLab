@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+    
+    <!-- Favicon - Set immediately to prevent default favicon flash -->
+    <script>
+      (function() {
+        // Remove any existing favicon links
+        var existingFavicons = document.querySelectorAll('link[rel*="icon"]');
+        for (var i = 0; i < existingFavicons.length; i++) {
+          existingFavicons[i].remove();
+        }
+        // Add favicon immediately with cache busting
+        var faviconUrl = '/favicon.ico?t=' + Date.now();
+        var link = document.createElement('link');
+        link.rel = 'icon';
+        link.type = 'image/x-icon';
+        link.href = faviconUrl;
+        document.head.appendChild(link);
+        // Also add shortcut icon
+        var shortcutLink = document.createElement('link');
+        shortcutLink.rel = 'shortcut icon';
+        shortcutLink.type = 'image/x-icon';
+        shortcutLink.href = faviconUrl;
+        document.head.appendChild(shortcutLink);
+        // Apple touch icon
+        var appleLink = document.createElement('link');
+        appleLink.rel = 'apple-touch-icon';
+        appleLink.href = faviconUrl;
+        document.head.appendChild(appleLink);
+      })();
+    </script>
+    
+    <!-- Primary Meta Tags -->
+    <title>LinguaLab - System Zarządzania Szkołą Językową | Oprogramowanie CRM dla Szkół</title>
+    <meta name="title" content="LinguaLab - System Zarządzania Szkołą Językową | Oprogramowanie CRM dla Szkół" />
+    <meta name="description" content="LinguaLab to najlepsze oprogramowanie do zarządzania szkołą językową w Polsce. System CRM dla szkół językowych z planowaniem zajęć, zarządzaniem uczniami, płatnościami i statystykami. 7 dni darmowego okresu próbnego." />
+    <meta name="keywords" content="szkoła językowa, system zarządzania szkołą językową, oprogramowanie dla szkół językowych, CRM dla szkół, zarządzanie uczniami, planowanie zajęć, system płatności szkoła, software szkoła językowa, zarządzanie szkołą językową, system dla szkół językowych, oprogramowanie szkoła językowa, zarządzanie grupami uczniów, harmonogram zajęć, rozliczanie pakietów lekcji, statystyki szkoły językowej, dashboard szkoła językowa, system rezerwacji zajęć, zarządzanie nauczycielami szkoła językowa" />
+    <meta name="author" content="LinguaLab" />
+    <meta name="robots" content="index, follow" />
+    <meta name="language" content="Polish" />
+    <meta name="geo.region" content="PL" />
+    <meta name="geo.placename" content="Poland" />
+    <link rel="canonical" href="https://lingualab.pl/" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://lingualab.pl/" />
+    <meta property="og:title" content="LinguaLab - System Zarządzania Szkołą Językową | Oprogramowanie CRM dla Szkół" />
+    <meta property="og:description" content="Najlepsze oprogramowanie do zarządzania szkołą językową w Polsce. System CRM z planowaniem zajęć, zarządzaniem uczniami, płatnościami i statystykami. 7 dni darmowego okresu próbnego." />
+    <meta property="og:locale" content="pl_PL" />
+    <meta property="og:site_name" content="LinguaLab" />
+    <meta property="og:image" content="https://lingualab.pl/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="LinguaLab - System zarządzania szkołą językową" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://lingualab.pl/" />
+    <meta name="twitter:title" content="LinguaLab - System Zarządzania Szkołą Językową" />
+    <meta name="twitter:description" content="Najlepsze oprogramowanie do zarządzania szkołą językową w Polsce. System CRM z planowaniem zajęć, zarządzaniem uczniami i płatnościami." />
+    <meta name="twitter:image" content="https://lingualab.pl/og-image.jpg" />
+
+    <!-- Structured Data (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "LinguaLab",
+      "alternateName": "LinguaLab - System Zarządzania Szkołą Językową",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "offers": [
+        {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "PLN",
+          "description": "7 dni darmowego okresu próbnego",
+          "name": "Okres próbny"
+        },
+        {
+          "@type": "Offer",
+          "price": "199",
+          "priceCurrency": "PLN",
+          "description": "Plan Starter - do 120 uczniów, 5 nauczycieli",
+          "name": "Plan Starter"
+        },
+        {
+          "@type": "Offer",
+          "price": "299",
+          "priceCurrency": "PLN",
+          "description": "Plan Growth - do 500 uczniów, 15 nauczycieli",
+          "name": "Plan Growth"
+        },
+        {
+          "@type": "Offer",
+          "price": "399",
+          "priceCurrency": "PLN",
+          "description": "Plan Unlimited - nieograniczona liczba uczniów i nauczycieli",
+          "name": "Plan Unlimited"
+        }
+      ],
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "ratingCount": "127",
+        "bestRating": "5",
+        "worstRating": "1"
+      },
+      "description": "Najlepsze oprogramowanie do zarządzania szkołą językową w Polsce. System CRM dla szkół językowych z planowaniem zajęć, zarządzaniem uczniami, płatnościami i zaawansowanymi statystykami. 7 dni darmowego okresu próbnego.",
+      "featureList": [
+        "Zarządzanie uczniami w szkole językowej",
+        "Zarządzanie nauczycielami i zespołem",
+        "Grupy uczniów i harmonogram zajęć",
+        "System obecności na zajęciach",
+        "Płatności i pakiety lekcji",
+        "Dashboard i statystyki szkoły językowej",
+        "Raporty i analityka dla właścicieli szkół"
+      ],
+      "screenshot": "https://lingualab.pl/screenshot.jpg",
+      "softwareVersion": "1.0",
+      "releaseNotes": "Pełna wersja systemu zarządzania szkołą językową",
+      "applicationSubCategory": "CRM dla szkół językowych",
+      "audience": {
+        "@type": "Audience",
+        "audienceType": "Szkoły językowe w Polsce"
+      },
+      "areaServed": {
+        "@type": "Country",
+        "name": "Poland"
+      },
+      "inLanguage": "pl"
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "LinguaLab",
+      "alternateName": "LinguaLab - System Zarządzania Szkołą Językową",
+      "url": "https://lingualab.pl",
+      "logo": "https://lingualab.pl/logo.png",
+      "description": "LinguaLab - Najlepsze oprogramowanie do zarządzania szkołą językową w Polsce. System CRM dla szkół językowych.",
+      "address": {
+        "@type": "PostalAddress",
+        "addressCountry": "PL",
+        "addressLocality": "Polska"
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "Wsparcie techniczne",
+        "availableLanguage": "Polish"
+      },
+      "areaServed": {
+        "@type": "Country",
+        "name": "Poland"
+      },
+      "sameAs": []
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "LinguaLab",
+      "alternateName": "LinguaLab - System Zarządzania Szkołą Językową",
+      "url": "https://lingualab.pl",
+      "description": "Najlepsze oprogramowanie do zarządzania szkołą językową w Polsce",
+      "inLanguage": "pl-PL",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://lingualab.pl/search?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Czy mogę zmienić plan w systemie zarządzania szkołą językową w dowolnym momencie?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Tak, zmiana planu w oprogramowaniu LinguaLab jest możliwa w każdej chwili. Nowe warunki obowiązują od następnego cyklu rozliczeniowego. System zarządzania szkołą językową pozwala na elastyczne zarządzanie subskrypcją."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Jak wygląda okres próbny w oprogramowaniu dla szkół językowych?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "7 dni pełnego dostępu do wszystkich funkcji systemu zarządzania szkołą językową, bez konieczności podawania danych karty kredytowej. Możesz przetestować wszystkie funkcje CRM dla szkół językowych za darmo."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Czy moje dane szkoły językowej są bezpieczne w systemie LinguaLab?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Tak, stosujemy najwyższe standardy bezpieczeństwa, szyfrowanie danych i regularne backup-y. Oprogramowanie dla szkół językowych LinguaLab spełnia wszystkie wymagania bezpieczeństwa danych."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Ile kosztuje oprogramowanie do zarządzania szkołą językową?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Ceny zaczynają się od 199 zł miesięcznie za plan Starter. Oferujemy również plan Growth (299 zł/miesiąc) i Unlimited (399 zł/miesiąc). Przy płatności rocznej oszczędzasz 20%."
+          }
+        }
+      ]
+    }
+    </script>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
