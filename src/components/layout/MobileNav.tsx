@@ -73,44 +73,40 @@ export function MobileNav() {
       </SheetTrigger>
       <SheetContent 
         side="left" 
-        className="app-mobile-nav w-[280px] sm:w-[320px] p-0 border-r border-border/50 bg-background/95 backdrop-blur-xl"
+        className="app-mobile-nav w-[280px] sm:w-[320px] p-0 border-r border-border/50 bg-background/95 backdrop-blur-xl flex flex-col"
         style={{ 
           height: '100vh', 
           maxHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
           overflow: 'hidden',
           padding: 0
         }}
       >
-        <div className="flex flex-col h-full overflow-hidden">
-          {/* Header with gradient */}
-          <div className="relative flex h-20 flex-shrink-0 items-center justify-between border-b border-border/50 px-6 bg-gradient-to-br from-primary/5 via-background to-background">
-            <Link 
-              to="/" 
-              className="flex items-center gap-3 group" 
-              onClick={() => setOpen(false)}
-            >
-              <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-primary shadow-lg shadow-primary/25 transition-all duration-300 group-hover:scale-110 group-hover:shadow-xl group-hover:shadow-primary/30">
-                <GraduationCap className="h-6 w-6 text-primary-foreground transition-transform duration-300 group-hover:rotate-12" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-lg font-bold text-foreground tracking-tight">LinguaLab</span>
-                <span className="text-xs text-muted-foreground">System CRM</span>
-              </div>
-            </Link>
-          </div>
-
-          {/* Navigation with smooth scroll */}
-          <nav 
-            className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-3"
-            style={{ 
-              WebkitOverflowScrolling: 'touch',
-              minHeight: 0,
-              flex: '1 1 auto'
-            }}
+        {/* Header with gradient */}
+        <div className="flex-shrink-0 flex h-20 items-center justify-between border-b border-border/50 px-6 bg-gradient-to-br from-primary/5 via-background to-background">
+          <Link 
+            to="/" 
+            className="flex items-center gap-3 group" 
+            onClick={() => setOpen(false)}
           >
-            <div className="space-y-1.5">
+            <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-primary shadow-lg shadow-primary/25 transition-all duration-300 group-hover:scale-110 group-hover:shadow-xl group-hover:shadow-primary/30">
+              <GraduationCap className="h-6 w-6 text-primary-foreground transition-transform duration-300 group-hover:rotate-12" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-lg font-bold text-foreground tracking-tight">LinguaLab</span>
+              <span className="text-xs text-muted-foreground">System CRM</span>
+            </div>
+          </Link>
+        </div>
+
+        {/* Navigation with smooth scroll */}
+        <nav 
+          className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-3 min-h-0"
+          style={{ 
+            WebkitOverflowScrolling: 'touch',
+            flex: '1 1 0%'
+          }}
+        >
+          <div className="space-y-1.5">
             {navItems.map((item, index) => {
               const isActive = location.pathname === item.path;
               return (
@@ -156,13 +152,13 @@ export function MobileNav() {
                 </Link>
               );
             })}
-            </div>
-          </nav>
+          </div>
+        </nav>
 
-          {/* User section with improved design - fixed at bottom */}
-          <div className="flex-shrink-0 border-t border-border/50 bg-gradient-to-t from-muted/30 to-transparent p-4 bg-background/95">
+        {/* User section with improved design - fixed at bottom */}
+        <div className="flex-shrink-0 border-t border-border/50 bg-background/95 p-4">
           <div className="flex items-center gap-3 rounded-2xl bg-card/50 p-3.5 backdrop-blur-sm border border-border/50 shadow-sm">
-            <Avatar className="h-11 w-11 border-2 border-primary/20 shadow-md">
+            <Avatar className="h-11 w-11 border-2 border-primary/20 shadow-md flex-shrink-0">
               <AvatarFallback className="bg-gradient-primary text-primary-foreground font-bold text-sm">
                 {displayName.charAt(0).toUpperCase()}
               </AvatarFallback>
@@ -184,12 +180,12 @@ export function MobileNav() {
                 logout();
                 setOpen(false);
               }}
-              className="h-9 w-9 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all duration-200 hover:scale-110 rounded-lg"
+              className="h-9 w-9 flex-shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all duration-200 hover:scale-110 rounded-lg"
+              title="Wyloguj"
             >
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
-        </div>
         </div>
       </SheetContent>
     </Sheet>
