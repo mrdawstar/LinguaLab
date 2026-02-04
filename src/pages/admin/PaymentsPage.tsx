@@ -403,12 +403,7 @@ export default function PaymentsPage() {
                         >
                           <TableCell>
                             <div className="flex items-center gap-3">
-                              <div className={cn(
-                                "avatar-bubble h-9 w-9 text-xs",
-                                student.payment_status === 'no_payment' && "bg-rose-500",
-                                student.payment_status === 'warning' && "bg-orange-500",
-                                student.payment_status === 'active' && "bg-emerald-500"
-                              )}>
+                              <div className="avatar-bubble h-9 w-9 text-xs">
                                 {student.name.charAt(0)}
                               </div>
                               <div>
@@ -483,12 +478,7 @@ export default function PaymentsPage() {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className={cn(
-                            "avatar-bubble h-10 w-10 text-sm shrink-0",
-                            student.payment_status === 'no_payment' && "bg-rose-500",
-                            student.payment_status === 'warning' && "bg-orange-500",
-                            student.payment_status === 'active' && "bg-emerald-500"
-                          )}>
+                          <div className="avatar-bubble h-10 w-10 text-sm shrink-0">
                             {student.name.charAt(0)}
                           </div>
                           <div className="min-w-0">

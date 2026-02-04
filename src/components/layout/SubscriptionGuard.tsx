@@ -1,7 +1,8 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { Link, useNavigate, Navigate } from 'react-router-dom';
-import { useSubscription } from '@/hooks/useSubscription';
+import { useSubscriptionContext } from '@/contexts/SubscriptionContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/hooks/useSubscription';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, Crown, Loader2, Sparkles, Mail, CheckCircle2, TrendingUp, Infinity as InfinityIcon, ArrowRight, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
@@ -15,14 +16,18 @@ interface SubscriptionGuardProps {
 
 export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
   const { role, user, schoolId, isLoading: authIsLoading } = useAuth();
+  const { subscription, isLoading: contextIsLoading } = useSubscriptionContext();
+  // Używamy useSubscription tylko do createCheckout - stan pobieramy z contextu
+  const { createCheckout } = useSubscription();
+  
   const {
     access_allowed,
     trial_active,
     trial_days_left,
     subscribed,
-    isLoading,
-    createCheckout,
-  } = useSubscription();
+  } = subscription;
+  
+  const isLoading = contextIsLoading;
 
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
 
@@ -42,8 +47,12 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
     return <Navigate to="/auth" replace />;
   }
 
-  // ⏳ Loading - pokaż ekran ładowania jeśli AuthContext jeszcze się ładuje LUB jeśli schoolId jest null (query nie jest jeszcze włączone) ALE tylko gdy użytkownik jest zalogowany
-  if (authIsLoading || (user && (isLoading || !schoolId))) {
+  // ⏳ Loading - pokaż ekran ładowania TYLKO jeśli:
+  // 1. AuthContext jeszcze się ładuje LUB
+  // 2. Użytkownik jest zalogowany ALE brak schoolId (query nie jest jeszcze włączone) LUB
+  // 3. SubscriptionContext jeszcze się ładuje (isLoading === true) - tylko przy pierwszym załadowaniu
+  // Po pierwszym załadowaniu, isLoading będzie false nawet jeśli React Query wykonuje refetch w tle
+  if (authIsLoading || (user && !schoolId) || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">

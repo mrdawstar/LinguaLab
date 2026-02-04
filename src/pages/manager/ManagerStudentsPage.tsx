@@ -145,11 +145,7 @@ export default function ManagerStudentsPage() {
                       )}>
                         <TableCell>
                           <div className="flex items-center gap-3">
-                            <div className={cn(
-                              "avatar-bubble h-9 w-9 text-xs",
-                              remaining <= 0 && "bg-destructive text-destructive-foreground",
-                              remaining === 1 && "bg-warning text-warning-foreground"
-                            )}>
+                            <div className="avatar-bubble h-9 w-9 text-xs">
                               {student.name.charAt(0)}
                             </div>
                             <div>

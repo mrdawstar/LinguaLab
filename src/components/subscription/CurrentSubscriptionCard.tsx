@@ -1,3 +1,4 @@
+import { useSubscriptionContext } from '@/contexts/SubscriptionContext';
 import { useSubscription } from '@/hooks/useSubscription';
 import { PLAN_CONFIGS } from '@/lib/subscriptionLimits';
 import { CheckCircle2, AlertTriangle, XCircle, Clock, RefreshCw, Loader2 } from 'lucide-react';
@@ -9,7 +10,10 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 export function CurrentSubscriptionCard() {
-  const { subscription_plan, subscription_end, subscription_period_start, trial_active, trial_ends_at, subscribed, syncSubscription, isLoading } = useSubscription();
+  const { subscription, isLoading: contextIsLoading, refreshSubscription } = useSubscriptionContext();
+  const { syncSubscription } = useSubscription();
+  const { subscription_plan, subscription_end, subscription_period_start, trial_active, trial_ends_at, subscribed } = subscription;
+  const isLoading = contextIsLoading;
   const [isSyncing, setIsSyncing] = useState(false);
 
   const plan = subscription_plan as 'basic' | 'pro' | 'unlimited' | null;
@@ -351,6 +355,8 @@ export function CurrentSubscriptionCard() {
                   setIsSyncing(true);
                   try {
                     await syncSubscription();
+                    // Odśwież stan w contextu po synchronizacji
+                    await refreshSubscription();
                     toast.success('Subskrypcja zsynchronizowana pomyślnie');
                   } catch (error: any) {
                     toast.error(error.message || 'Nie udało się zsynchronizować subskrypcji');

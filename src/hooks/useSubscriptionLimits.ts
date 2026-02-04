@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useSubscription } from './useSubscription';
+import { useSubscriptionContext } from '@/contexts/SubscriptionContext';
 import { useStudents } from './useStudents';
 import { useTeachers } from './useTeachers';
 import { useGroups } from './useGroups';
@@ -18,7 +18,8 @@ import {
 } from '@/lib/subscriptionLimits';
 
 export function useSubscriptionLimits() {
-  const { subscription_plan, trial_active, subscribed } = useSubscription();
+  const { subscription } = useSubscriptionContext();
+  const { subscription_plan, trial_active, subscribed } = subscription;
   const { schoolId } = useAuth();
   const { students } = useStudents();
   const { teachers } = useTeachers();

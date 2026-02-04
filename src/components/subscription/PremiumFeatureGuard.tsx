@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import { useSubscriptionLimits } from '@/hooks/useSubscriptionLimits';
 import { AlertCircle, Crown, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useSubscriptionContext } from '@/contexts/SubscriptionContext';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -22,7 +23,9 @@ export function PremiumFeatureGuard({
   className,
 }: PremiumFeatureGuardProps) {
   const { features, plan, recommendedUpgradePlan } = useSubscriptionLimits();
-  const { createCheckout, trial_active, subscribed, subscription_plan } = useSubscription();
+  const { subscription } = useSubscriptionContext();
+  const { createCheckout } = useSubscription();
+  const { trial_active, subscribed, subscription_plan } = subscription;
   const navigate = useNavigate();
 
   // Trial ma dostęp do wszystkich funkcji premium

@@ -205,7 +205,7 @@ serve(async (req) => {
         },
       ],
       success_url: `${origin}/subscription-success?plan=${plan}`,
-      cancel_url: `${origin}/pricing`,
+      cancel_url: `${origin}/admin/subscription`,
       metadata: {
         user_id: user.id,
         school_id: profile.school_id,

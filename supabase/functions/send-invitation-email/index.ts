@@ -95,10 +95,25 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`User has role: ${roleData.role}`);
 
     if (!RESEND_API_KEY) {
-      throw new Error("RESEND_API_KEY is not configured");
+      console.error("RESEND_API_KEY is not configured");
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error - RESEND_API_KEY not set' }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
-    const { email, role, token: inviteToken, invitedBy, schoolName }: InvitationEmailRequest = await req.json();
+    let requestBody;
+    try {
+      requestBody = await req.json();
+    } catch (parseError) {
+      console.error("Error parsing request body:", parseError);
+      return new Response(
+        JSON.stringify({ error: 'Bad Request - Invalid JSON' }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    const { email, role, token: inviteToken, invitedBy, schoolName }: InvitationEmailRequest = requestBody;
     
     // 3. Validate that the invitation token exists in the database
     const { data: invitation, error: inviteError } = await supabaseClient
@@ -113,6 +128,46 @@ const handler = async (req: Request): Promise<Response> => {
         JSON.stringify({ error: 'Bad Request - Invalid invitation token' }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
+    }
+    
+    // Get school name if not provided
+    let finalSchoolName = schoolName;
+    if (!finalSchoolName && invitation.school_id) {
+      try {
+        // Try using the authenticated client first (works if user has access to school)
+        const { data: schoolData } = await supabaseClient
+          .from('schools')
+          .select('name')
+          .eq('id', invitation.school_id)
+          .single();
+        
+        if (schoolData?.name) {
+          finalSchoolName = schoolData.name;
+        } else {
+          // Fallback: try with service role key if available
+          const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+          if (serviceRoleKey) {
+            const supabaseService = createClient(
+              Deno.env.get('SUPABASE_URL')!,
+              serviceRoleKey,
+              { auth: { persistSession: false } }
+            );
+            
+            const { data: schoolDataService } = await supabaseService
+              .from('schools')
+              .select('name')
+              .eq('id', invitation.school_id)
+              .single();
+            
+            if (schoolDataService?.name) {
+              finalSchoolName = schoolDataService.name;
+            }
+          }
+        }
+      } catch (schoolError) {
+        console.error("Error fetching school name:", schoolError);
+        // Continue without school name - it's optional
+      }
     }
 
     // 4. Verify the invitation email matches the request
@@ -141,56 +196,92 @@ const handler = async (req: Request): Promise<Response> => {
         "Authorization": `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "LinguaLab <onboarding@resend.dev>",
+        from: finalSchoolName ? `${finalSchoolName} via LinguaLab <onboarding@resend.dev>` : "LinguaLab <onboarding@resend.dev>",
         to: [email],
-        subject: `Zaproszenie do LinguaLab - ${getRoleName(role)}`,
+        subject: finalSchoolName 
+          ? `Zaproszenie do ${finalSchoolName} - ${getRoleName(role)}`
+          : `Zaproszenie do LinguaLab - ${getRoleName(role)}`,
         html: `
           <!DOCTYPE html>
           <html lang="pl">
           <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <meta name="color-scheme" content="light">
+            <meta name="supported-color-schemes" content="light">
           </head>
-          <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border-radius: 16px; padding: 32px; text-align: center; margin-bottom: 24px;">
-              <h1 style="color: white; margin: 0; font-size: 28px;">🎓 LinguaLab</h1>
-              <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0;">System zarządzania szkołą językową</p>
-            </div>
-            
-            <div style="background: #f8fafc; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-              <h2 style="color: #1e293b; margin-top: 0;">Witaj!</h2>
-              <p style="color: #475569;">
-                Zostałeś zaproszony do dołączenia do platformy LinguaLab${schoolName ? ` w szkole <strong>${schoolName}</strong>` : ''} jako <strong>${getRoleName(role)}</strong>.
-              </p>
-              <p style="color: #475569;">
-                Zaproszenie wysłane przez: <strong>${invitedBy}</strong>
-              </p>
-            </div>
-            
-            <div style="text-align: center; margin: 32px 0;">
-              <a href="${inviteLink}" style="display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-weight: 600; font-size: 16px;">
-                Dołącz teraz
-              </a>
-            </div>
-            
-            <div style="background: #fef3c7; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-              <p style="color: #92400e; margin: 0; font-size: 14px;">
-                ⏰ <strong>Uwaga:</strong> To zaproszenie wygaśnie za 7 dni.
-              </p>
-            </div>
-            
-            <p style="color: #64748b; font-size: 14px;">
-              Jeśli nie możesz kliknąć przycisku powyżej, skopiuj i wklej poniższy link w przeglądarce:
-            </p>
-            <p style="color: #6366f1; font-size: 12px; word-break: break-all;">
-              ${inviteLink}
-            </p>
-            
-            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;">
-            
-            <p style="color: #94a3b8; font-size: 12px; text-align: center;">
-              Jeśli nie oczekiwałeś tego zaproszenia, możesz bezpiecznie zignorować tę wiadomość.
-            </p>
+          <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f8fafc;">
+            <table role="presentation" style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td align="center" style="padding: 40px 20px;">
+                  <table role="presentation" style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                    <!-- Header -->
+                    <tr>
+                      <td style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 40px 32px; text-align: center;">
+                        <h1 style="color: #ffffff; margin: 0; font-size: 32px; font-weight: 700; letter-spacing: -0.5px;">🎓 LinguaLab</h1>
+                        <p style="color: rgba(255,255,255,0.95); margin: 12px 0 0 0; font-size: 16px; font-weight: 500;">System zarządzania szkołą językową</p>
+                      </td>
+                    </tr>
+                    
+                    <!-- Content -->
+                    <tr>
+                      <td style="padding: 40px 32px;">
+                        <h2 style="color: #1e293b; margin: 0 0 24px 0; font-size: 24px; font-weight: 600;">Witaj!</h2>
+                        
+                        <p style="color: #475569; margin: 0 0 16px 0; font-size: 16px; line-height: 1.6;">
+                          Zostałeś zaproszony do dołączenia do platformy LinguaLab${finalSchoolName ? ` w szkole <strong style="color: #1e293b;">${finalSchoolName}</strong>` : ''} jako <strong style="color: #6366f1;">${getRoleName(role)}</strong>.
+                        </p>
+                        
+                        <div style="background: #f1f5f9; border-left: 4px solid #6366f1; border-radius: 8px; padding: 16px; margin: 24px 0;">
+                          <p style="color: #475569; margin: 0; font-size: 14px; line-height: 1.5;">
+                            <strong style="color: #1e293b;">Zaproszenie wysłane przez:</strong><br>
+                            ${invitedBy}
+                          </p>
+                        </div>
+                        
+                        <!-- CTA Button -->
+                        <table role="presentation" style="width: 100%; margin: 32px 0;">
+                          <tr>
+                            <td align="center">
+                              <a href="${inviteLink}" style="display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 12px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); transition: transform 0.2s;">
+                                ✨ Dołącz teraz
+                              </a>
+                            </td>
+                          </tr>
+                        </table>
+                        
+                        <!-- Warning Box -->
+                        <div style="background: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 16px; margin: 24px 0;">
+                          <p style="color: #92400e; margin: 0; font-size: 14px; line-height: 1.5;">
+                            ⏰ <strong>Uwaga:</strong> To zaproszenie wygaśnie za 7 dni. Kliknij przycisk powyżej, aby dołączyć.
+                          </p>
+                        </div>
+                        
+                        <!-- Alternative Link -->
+                        <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #e2e8f0;">
+                          <p style="color: #64748b; font-size: 14px; margin: 0 0 12px 0; line-height: 1.5;">
+                            Jeśli nie możesz kliknąć przycisku powyżej, skopiuj i wklej poniższy link w przeglądarce:
+                          </p>
+                          <p style="color: #6366f1; font-size: 13px; word-break: break-all; margin: 0; padding: 12px; background: #f8fafc; border-radius: 6px; font-family: 'Courier New', monospace;">
+                            ${inviteLink}
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                      <td style="padding: 24px 32px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
+                        <p style="color: #94a3b8; font-size: 12px; text-align: center; margin: 0; line-height: 1.5;">
+                          Jeśli nie oczekiwałeś tego zaproszenia, możesz bezpiecznie zignorować tę wiadomość.<br>
+                          <span style="color: #cbd5e1;">© ${new Date().getFullYear()} LinguaLab. Wszystkie prawa zastrzeżone.</span>
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
           </body>
           </html>
         `,

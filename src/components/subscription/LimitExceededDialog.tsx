@@ -1,6 +1,7 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, ArrowRight, Crown } from 'lucide-react';
+import { useSubscriptionContext } from '@/contexts/SubscriptionContext';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useNavigate } from 'react-router-dom';
 import { PLAN_CONFIGS, TRIAL_CONFIG } from '@/lib/subscriptionLimits';
@@ -21,7 +22,9 @@ export function LimitExceededDialog({
   currentPlan,
   recommendedPlan,
 }: LimitExceededDialogProps) {
-  const { createCheckout, trial_active, subscribed, subscription_plan } = useSubscription();
+  const { subscription } = useSubscriptionContext();
+  const { createCheckout } = useSubscription();
+  const { trial_active, subscribed, subscription_plan } = subscription;
   const navigate = useNavigate();
 
   const resourceNames = {

@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
-import { Users, Calendar, TrendingUp, Loader2 } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Users, Calendar, TrendingUp, Loader2, ArrowRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 
 interface Group {
@@ -16,15 +17,11 @@ interface Group {
 
 export function MyGroups() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [groups, setGroups] = useState<Group[]>([]);
 
-  useEffect(() => {
-    if (!user) return;
-    fetchGroups();
-  }, [user]);
-
-  const fetchGroups = async () => {
+  const fetchGroups = useCallback(async () => {
     try {
       // Fetch groups assigned to this teacher (RLS handles the filtering)
       const { data: groupsData, error } = await supabase
@@ -112,7 +109,12 @@ export function MyGroups() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    fetchGroups();
+  }, [user, fetchGroups]);
 
   if (loading) {
     return (
@@ -140,10 +142,18 @@ export function MyGroups() {
   }
 
   return (
-    <div className="glass-card p-6 animate-fade-in">
+    <div 
+      className="glass-card p-6 animate-fade-in cursor-pointer group hover:shadow-md transition-all"
+      onClick={() => navigate('/teacher/students?tab=groups')}
+    >
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-foreground">Moje grupy</h3>
-        <span className="text-sm text-muted-foreground">{groups.length} grup</span>
+        <h3 className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors">
+          Moje grupy
+        </h3>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">{groups.length} grup</span>
+          <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">

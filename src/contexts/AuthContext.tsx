@@ -49,116 +49,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, nextSession) => {
-      // Handle token refresh
-      if (event === 'TOKEN_REFRESHED' && nextSession) {
-        setSession(nextSession);
-        setUser(nextSession.user);
-        if (nextSession.user) {
-          await fetchUserData(nextSession.user.id, nextSession.access_token);
-        }
-        return;
-      }
-      
-      // Handle sign out or session expired
-      if (event === 'SIGNED_OUT' || !nextSession) {
-        // Clear all data and cache
-        queryClient.clear();
-        // Clear localStorage items related to Supabase auth
-        const keysToRemove: string[] = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && (key.includes('supabase.auth') || (key.includes('sb-') && key.includes('-auth-token')))) {
-            keysToRemove.push(key);
-          }
-        }
-        keysToRemove.forEach(key => localStorage.removeItem(key));
-        setSession(null);
-        setUser(null);
-        setProfile(null);
-        setRole(null);
-        setSchoolId(null);
-        setIsLoading(false);
-        return;
-      }
-      
-      // Handle sign in - clear cache when new user logs in
-      if (event === 'SIGNED_IN' && nextSession?.user) {
-        // Clear all cache to prevent data from previous user
-        queryClient.clear();
-      }
-      
-      setSession(nextSession);
-      const previousUserId = user?.id;
-      const newUserId = nextSession?.user?.id;
-      
-      // If user changed, clear all cache
-      if (previousUserId && newUserId && previousUserId !== newUserId) {
-        queryClient.clear();
-      }
-      
-      setUser(nextSession?.user ?? null);
-      if (nextSession?.user) {
-        setTimeout(() => {
-          fetchUserData(nextSession.user.id, nextSession.access_token);
-        }, 0);
-      } else {
-        setProfile(null);
-        setRole(null);
-        setSchoolId(null);
-        setIsLoading(false);
-      }
-    });
-
-    // Initial session check with retry
-    const initializeSession = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) {
-          console.error('Session error:', error);
-          // If refresh token is invalid, clear everything and sign out
-          if (error.message?.includes('Refresh Token') || error.message?.includes('Invalid Refresh Token')) {
-            await supabase.auth.signOut();
-            queryClient.clear();
-            setSession(null);
-            setUser(null);
-            setProfile(null);
-            setRole(null);
-            setSchoolId(null);
-          }
-          setIsLoading(false);
-          return;
-        }
-        
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await fetchUserData(session.user.id, session.access_token);
-        } else {
-          setIsLoading(false);
-        }
-      } catch (error: any) {
-        console.error('Error initializing session:', error);
-        // If refresh token error, sign out and clear
-        if (error?.message?.includes('Refresh Token') || error?.message?.includes('Invalid Refresh Token')) {
-          await supabase.auth.signOut();
-          queryClient.clear();
-          setSession(null);
-          setUser(null);
-          setProfile(null);
-          setRole(null);
-          setSchoolId(null);
-        }
-        setIsLoading(false);
-      }
-    };
-
-    initializeSession();
-
-    return () => subscription.unsubscribe();
-  }, []);
-
   const tryBootstrapUser = async (accessToken?: string) => {
     if (!accessToken) return;
     if (import.meta.env.VITE_DISABLE_BOOTSTRAP_USER === 'true') return;
@@ -250,6 +140,121 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, nextSession) => {
+      // Handle token refresh
+      if (event === 'TOKEN_REFRESHED' && nextSession) {
+        setSession(nextSession);
+        setUser(nextSession.user);
+        if (nextSession.user) {
+          await fetchUserData(nextSession.user.id, nextSession.access_token);
+        }
+        return;
+      }
+      
+      // Handle sign out or session expired
+      if (event === 'SIGNED_OUT' || !nextSession) {
+        // Clear all data and cache
+        queryClient.clear();
+        // Clear localStorage items related to Supabase auth
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.includes('supabase.auth') || (key.includes('sb-') && key.includes('-auth-token')))) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        setRole(null);
+        setSchoolId(null);
+        setIsLoading(false);
+        return;
+      }
+      
+      setSession(nextSession);
+      const previousUserId = user?.id;
+      const newUserId = nextSession?.user?.id;
+      
+      // If user changed, clear all cache (including subscription cache)
+      if (previousUserId && newUserId && previousUserId !== newUserId) {
+        // Clear all cache to prevent data from previous user
+        queryClient.clear();
+      } else if (event === 'SIGNED_IN' && nextSession?.user) {
+        // For same user sign in, only clear non-subscription cache
+        // Keep subscription cache to avoid unnecessary refetch
+        queryClient.removeQueries({
+          predicate: (query) => {
+            const key = query.queryKey[0];
+            // Keep subscription-related queries
+            return key !== 'subscription-status' && key !== 'school-subscription-plan';
+          }
+        });
+      }
+      
+      setUser(nextSession?.user ?? null);
+      if (nextSession?.user) {
+        setTimeout(() => {
+          fetchUserData(nextSession.user.id, nextSession.access_token);
+        }, 0);
+      } else {
+        setProfile(null);
+        setRole(null);
+        setSchoolId(null);
+        setIsLoading(false);
+      }
+    });
+
+    // Initial session check with retry
+    const initializeSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('Session error:', error);
+          // If refresh token is invalid, clear everything and sign out
+          if (error.message?.includes('Refresh Token') || error.message?.includes('Invalid Refresh Token')) {
+            await supabase.auth.signOut();
+            queryClient.clear();
+            setSession(null);
+            setUser(null);
+            setProfile(null);
+            setRole(null);
+            setSchoolId(null);
+          }
+          setIsLoading(false);
+          return;
+        }
+        
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          await fetchUserData(session.user.id, session.access_token);
+        } else {
+          setIsLoading(false);
+        }
+      } catch (error: any) {
+        console.error('Error initializing session:', error);
+        // If refresh token error, sign out and clear
+        if (error?.message?.includes('Refresh Token') || error?.message?.includes('Invalid Refresh Token')) {
+          await supabase.auth.signOut();
+          queryClient.clear();
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setRole(null);
+          setSchoolId(null);
+        }
+        setIsLoading(false);
+      }
+    };
+
+    initializeSession();
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const login = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });

@@ -17,8 +17,9 @@ export interface SubscriptionStatus {
 }
 
 export const SUBSCRIPTION_QUERY_KEY = (userId?: string, schoolId?: string) => ['subscription-status', userId, schoolId];
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minut
-const REFETCH_INTERVAL = 5 * 60 * 1000; // 5 minut
+const CACHE_DURATION = 10 * 60 * 1000; // 10 minut - dane są świeże przez 10 minut
+const REFETCH_INTERVAL = 10 * 60 * 1000; // 10 minut - automatyczne odświeżanie co 10 minut
+const CACHE_TIME = 30 * 60 * 1000; // 30 minut - cache przechowywany przez 30 minut po unmount
 
 export function useSubscription() {
   const { user, schoolId } = useAuth();
@@ -219,16 +220,17 @@ export function useSubscription() {
   const {
     data: status,
     isLoading,
+    isFetching,
     error: queryError,
     refetch,
   } = useQuery({
     queryKey,
     queryFn: fetchSubscriptionStatus,
     enabled: queryEnabled, // Tylko gdy użytkownik jest zalogowany i ma schoolId
-    staleTime: CACHE_DURATION, // Dane są "świeże" przez 5 minut
-    gcTime: 5 * 60 * 1000, // BŁĄD #8 - poprawiono: przechowuj cache przez 5 minut po unmount dla lepszej synchronizacji
-    refetchInterval: REFETCH_INTERVAL, // Automatyczne odświeżanie co 5 minut
-    refetchOnMount: true, // Zawsze odświeżaj przy montowaniu
+    staleTime: CACHE_DURATION, // Dane są "świeże" przez 10 minut - React Query nie będzie refetch jeśli dane są świeże
+    gcTime: CACHE_TIME, // Cache przechowywany przez 30 minut po unmount
+    refetchInterval: REFETCH_INTERVAL, // Automatyczne odświeżanie co 10 minut
+    refetchOnMount: false, // NIE odświeżaj przy montowaniu - React Query automatycznie użyje cache jeśli dane są świeże (staleTime)
     refetchOnWindowFocus: false, // NIE odświeżaj przy focusie okna
     refetchOnReconnect: true, // Odśwież przy ponownym połączeniu
     retry: 1, // Tylko jedna próba ponowienia przy błędzie
@@ -236,7 +238,8 @@ export function useSubscription() {
     placeholderData: previousData || undefined, // Użyj cache jako placeholder podczas refetch
   });
   
-  // Użyj status z query lub fallback do wartości domyślnych tylko jeśli nie ma cache
+  // Użyj status z query lub cache - preferuj cache jeśli dostępny
+  // isLoading będzie false jeśli mamy dane w cache, nawet jeśli query się wykonuje w tle
   const finalStatus: SubscriptionStatus = status || previousData || {
     subscribed: false,
     subscription_plan: null,
@@ -246,9 +249,13 @@ export function useSubscription() {
     trial_days_left: 0,
     trial_ends_at: null,
     access_allowed: false,
-    isLoading: true,
+    isLoading: !previousData, // Tylko pokazuj loading jeśli nie ma cache
     error: null,
   };
+  
+  // Jeśli mamy dane w cache (status lub previousData), nie pokazuj isLoading
+  // isLoading pokazuj tylko gdy faktycznie nie ma żadnych danych
+  const effectiveIsLoading = (status || previousData) ? false : isLoading;
 
   // Funkcja do ręcznego odświeżania (używana po checkout)
   // BŁĄD #8 - poprawiono: lepsze cache invalidation
@@ -449,7 +456,7 @@ export function useSubscription() {
 
   return {
     ...finalStatus,
-    isLoading,
+    isLoading: effectiveIsLoading, // Użyj effectiveIsLoading zamiast isLoading
     error: errorMessage || finalStatus.error,
     checkSubscription,
     createCheckout,

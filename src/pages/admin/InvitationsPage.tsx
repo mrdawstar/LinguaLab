@@ -99,14 +99,15 @@ export default function InvitationsPage() {
       actions={
         <Button
           onClick={() => setDialogOpen(true)}
-          className="rounded-xl bg-gradient-primary"
+          className="rounded-xl bg-gradient-primary w-full sm:w-auto"
         >
           <Plus className="mr-2 h-4 w-4" />
-          Nowe zaproszenie
+          <span className="hidden sm:inline">Nowe zaproszenie</span>
+          <span className="sm:hidden">Nowe</span>
         </Button>
       }
     >
-      <div className="space-y-6">
+      <div className="space-y-6 overflow-x-hidden">
 
         {/* Stats */}
         <div className="grid gap-4 sm:grid-cols-3">
@@ -149,87 +150,150 @@ export default function InvitationsPage() {
           </div>
         </div>
 
-        {/* Invitations Table */}
-        <div className="glass-card overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Email</TableHead>
-                <TableHead>Rola</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Wygasa</TableHead>
-                <TableHead className="text-right">Akcje</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {invitations.length === 0 ? (
+        {/* Invitations Table - Desktop */}
+        <div className="glass-card overflow-hidden hidden md:block">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
-                    Brak zaproszeń. Kliknij "Nowe zaproszenie" aby dodać.
-                  </TableCell>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Rola</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Wygasa</TableHead>
+                  <TableHead className="text-right">Akcje</TableHead>
                 </TableRow>
-              ) : (
-                invitations.map((invitation) => (
-                  <TableRow key={invitation.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="avatar-bubble h-9 w-9 text-xs">
-                          {invitation.email.charAt(0).toUpperCase()}
-                        </div>
-                        <span className="font-medium">{invitation.email}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{getRoleBadge(invitation.role)}</TableCell>
-                    <TableCell>{getStatusBadge(invitation)}</TableCell>
-                    <TableCell>
-                      <span className={cn(
-                        "text-sm",
-                        isPast(new Date(invitation.expires_at)) && "text-destructive"
-                      )}>
-                        {format(new Date(invitation.expires_at), 'dd.MM.yyyy HH:mm', { locale: pl })}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-8 w-8"
-                                onClick={() => copyInviteLink(invitation.token)}
-                              >
-                                <Copy className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Kopiuj link zaproszenia</p>
-                            </TooltipContent>
-                          </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                                onClick={() => deleteInvitation.mutate(invitation.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Usuń zaproszenie</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      </div>
+              </TableHeader>
+              <TableBody>
+                {invitations.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                      Brak zaproszeń. Kliknij "Nowe zaproszenie" aby dodać.
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  invitations.map((invitation) => (
+                    <TableRow key={invitation.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="avatar-bubble h-9 w-9 text-xs">
+                            {invitation.email.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="font-medium">{invitation.email}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{getRoleBadge(invitation.role)}</TableCell>
+                      <TableCell>{getStatusBadge(invitation)}</TableCell>
+                      <TableCell>
+                        <span className={cn(
+                          "text-sm",
+                          isPast(new Date(invitation.expires_at)) && "text-destructive"
+                        )}>
+                          {format(new Date(invitation.expires_at), 'dd.MM.yyyy HH:mm', { locale: pl })}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8"
+                                  onClick={() => copyInviteLink(invitation.token)}
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Kopiuj link zaproszenia</p>
+                              </TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                  onClick={() => deleteInvitation.mutate(invitation.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Usuń zaproszenie</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+
+        {/* Mobile Cards */}
+        <div className="space-y-3 md:hidden">
+          {invitations.length === 0 ? (
+            <div className="glass-card p-8 text-center text-muted-foreground">
+              Brak zaproszeń. Kliknij "Nowe zaproszenie" aby dodać.
+            </div>
+          ) : (
+            invitations.map((invitation) => (
+              <div key={invitation.id} className="glass-card p-4 space-y-3">
+                {/* Header with avatar and email */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="avatar-bubble h-10 w-10 text-sm flex-shrink-0">
+                      {invitation.email.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-foreground truncate">{invitation.email}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        {getRoleBadge(invitation.role)}
+                        {getStatusBadge(invitation)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Expires date */}
+                <div className="flex items-center gap-2 text-sm">
+                  <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <span className={cn(
+                    "text-muted-foreground",
+                    isPast(new Date(invitation.expires_at)) && "text-destructive font-medium"
+                  )}>
+                    Wygasa: {format(new Date(invitation.expires_at), 'dd.MM.yyyy HH:mm', { locale: pl })}
+                  </span>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2 pt-2 border-t border-border/50">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => copyInviteLink(invitation.token)}
+                  >
+                    <Copy className="mr-2 h-4 w-4" />
+                    Kopiuj link
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => deleteInvitation.mutate(invitation.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 

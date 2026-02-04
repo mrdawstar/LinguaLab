@@ -381,48 +381,77 @@ export default function LandingPage() {
         </div>
 
         {mobileMenuOpen && (
-          <div className="lg:hidden bg-background/95 backdrop-blur-md border-t border-border">
-            <div className="container mx-auto px-4 py-4 space-y-1">
+          <div className="lg:hidden bg-background backdrop-blur-xl border-t border-border/50 shadow-lg">
+            <div className="container mx-auto px-4 py-5 space-y-3">
               {[
-                { label: 'Funkcje', id: 'funkcje' },
-                { label: 'Cennik', id: 'pricing' },
-                { label: 'Proces', id: 'proces' },
-                { label: 'Opinie', id: 'opinie' }
-              ].map((item) => (
-                <a
-                  key={item.id}
-                  href={`#${item.id}`}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    const element = document.getElementById(item.id);
-                    if (element) {
-                      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
-                    setMobileMenuOpen(false);
-                  }}
-                  className="relative block py-3 px-3 text-muted-foreground hover:text-primary font-semibold transition-all duration-300 group/mobile"
-                >
-                  <span className="relative z-10">{item.label}</span>
-                  <span className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary to-primary/60 rounded-r-lg opacity-0 group-hover/mobile:opacity-100 transition-opacity duration-300" />
-                </a>
-              ))}
-              <div className="pt-4 space-y-2 border-t border-border/50 mt-2">
+                { label: 'Funkcje', id: 'funkcje', icon: Sparkles },
+                { label: 'Cennik', id: 'pricing', icon: Crown },
+                { label: 'Proces', id: 'proces', icon: Zap },
+                { label: 'Opinie', id: 'opinie', icon: Star }
+              ].map((item) => {
+                const Icon = item.icon;
+                return (
+                  <a
+                    key={item.id}
+                    href={`#${item.id}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const element = document.getElementById(item.id);
+                      if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }
+                      setMobileMenuOpen(false);
+                    }}
+                    className="group/mobile relative flex items-center gap-3 rounded-xl px-4 py-3.5 bg-muted/30 hover:bg-gradient-to-r hover:from-primary/10 hover:to-primary/5 border border-transparent hover:border-primary/20 transition-all duration-300 active:scale-[0.98]"
+                  >
+                    {/* Icon container */}
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 group-hover/mobile:bg-primary/20 group-hover/mobile:scale-110 transition-all duration-300">
+                      <Icon className="h-5 w-5 text-primary group-hover/mobile:text-primary group-hover/mobile:rotate-12 transition-all duration-300" />
+                    </div>
+                    
+                    {/* Label */}
+                    <span className="flex-1 text-base font-semibold text-foreground group-hover/mobile:text-primary transition-colors duration-300">
+                      {item.label}
+                    </span>
+                    
+                    {/* Arrow indicator */}
+                    <ChevronRight className="h-5 w-5 text-muted-foreground group-hover/mobile:text-primary group-hover/mobile:translate-x-1 transition-all duration-300" />
+                    
+                    {/* Hover gradient effect */}
+                    <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover/mobile:opacity-100 transition-opacity duration-300 -z-0" />
+                  </a>
+                );
+              })}
+              
+              {/* Action buttons section */}
+              <div className="pt-5 space-y-4 border-t border-border/50 mt-5">
                 {user ? (
                   <Link to="/admin" onClick={() => setMobileMenuOpen(false)}>
-                    <Button className="w-full hover:scale-[1.02] transition-transform duration-300">
+                    <Button className="w-full h-12 bg-gradient-primary text-primary-foreground hover:opacity-90 hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/30 transition-all duration-300 font-semibold text-base">
+                      <Settings className="mr-2 h-5 w-5" />
                       Panel zarządzania
                     </Button>
                   </Link>
                 ) : (
                   <>
                     <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
-                      <Button variant="outline" className="w-full hover:scale-[1.02] hover:border-primary hover:text-primary transition-all duration-300">
-                        Zaloguj się
+                      <Button 
+                        variant="outline" 
+                        className="w-full h-12 border-2 hover:border-primary hover:text-primary hover:bg-primary/5 transition-all duration-300 font-semibold text-base group"
+                      >
+                        <span className="flex items-center justify-center gap-2">
+                          <span>Zaloguj się</span>
+                          <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-300" />
+                        </span>
                       </Button>
                     </Link>
-                    <Link to="/auth?mode=signup" onClick={() => setMobileMenuOpen(false)}>
-                      <Button className="w-full bg-gradient-primary text-primary-foreground hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/30 transition-all duration-300">
-                        Rozpocznij
+                    <Link to="/auth?mode=signup" onClick={() => setMobileMenuOpen(false)} className="block mt-4">
+                      <Button className="w-full h-12 bg-gradient-primary text-primary-foreground hover:opacity-90 hover:scale-[1.02] hover:shadow-xl hover:shadow-primary/40 transition-all duration-300 font-semibold text-base relative overflow-hidden group">
+                        <span className="relative z-10 flex items-center justify-center gap-2">
+                          <Sparkles className="h-5 w-5" />
+                          <span>Rozpocznij za darmo</span>
+                        </span>
+                        <span className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
                       </Button>
                     </Link>
                   </>
@@ -992,14 +1021,19 @@ export default function LandingPage() {
                   </p>
                   <div className="flex items-center gap-4">
                     <div className={cn(
-                      'relative h-14 w-14 rounded-full bg-gradient-to-br flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:scale-110 group-hover:shadow-xl transition-all duration-300',
+                      'relative h-14 w-14 min-h-[3.5rem] min-w-[3.5rem] rounded-full bg-gradient-to-br flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:scale-110 group-hover:shadow-xl transition-all duration-300 overflow-hidden',
+                      'sm:h-14 sm:w-14',
                       `bg-gradient-to-br ${testimonial.avatarGradient}`
-                    )}>
-                      <span>{testimonial.avatarInitials}</span>
+                    )}
+                    style={{ borderRadius: '50%' }}
+                    >
+                      <span className="relative z-10">{testimonial.avatarInitials}</span>
                       <div className={cn(
                         'absolute inset-0 rounded-full bg-gradient-to-br opacity-0 group-hover:opacity-20 transition-opacity duration-300',
                         `bg-gradient-to-br ${testimonial.avatarGradient}`
-                      )}></div>
+                      )}
+                      style={{ borderRadius: '50%' }}
+                      ></div>
                     </div>
                     <div>
                       <div className="font-semibold text-foreground group-hover:text-primary transition-colors">{testimonial.name}</div>

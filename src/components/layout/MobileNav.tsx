@@ -13,7 +13,8 @@ import {
   Menu,
   X,
   Crown,
-  ChevronRight
+  ChevronRight,
+  UserPlus
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -28,6 +29,7 @@ const adminNavItems = [
   { icon: BookOpen, label: 'Grupy', path: '/admin/groups' },
   { icon: Calendar, label: 'Harmonogram', path: '/admin/schedule' },
   { icon: CreditCard, label: 'Płatności', path: '/admin/payments' },
+  { icon: ClipboardCheck, label: 'Zaproszenia', path: '/admin/invitations' },
   { icon: Crown, label: 'Subskrypcja', path: '/admin/subscription' },
   { icon: Settings, label: 'Ustawienia', path: '/admin/settings' },
 ];
@@ -39,14 +41,15 @@ const managerNavItems = [
   { icon: BookOpen, label: 'Grupy', path: '/admin/groups' },
   { icon: Calendar, label: 'Harmonogram', path: '/admin/schedule' },
   { icon: CreditCard, label: 'Płatności', path: '/admin/payments' },
+  { icon: ClipboardCheck, label: 'Zaproszenia', path: '/admin/invitations' },
   { icon: Settings, label: 'Ustawienia', path: '/admin/settings' },
 ];
 
 const teacherNavItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/teacher' },
   { icon: BookOpen, label: 'Moje zajęcia', path: '/teacher/lessons' },
-  { icon: ClipboardCheck, label: 'Obecności', path: '/teacher/attendance' },
   { icon: Users, label: 'Moi uczniowie', path: '/teacher/students' },
+  { icon: Settings, label: 'Ustawienia', path: '/teacher/settings' },
 ];
 
 export function MobileNav() {

@@ -3,8 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2, CheckCircle } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscriptionContext } from '@/contexts/SubscriptionContext';
 import { SUBSCRIPTION_QUERY_KEY } from '@/hooks/useSubscription';
-import { useSubscription } from '@/hooks/useSubscription';
 
 export default function SubscriptionSuccess() {
   const navigate = useNavigate();
@@ -12,7 +12,7 @@ export default function SubscriptionSuccess() {
   const plan = params.get('plan');
   const queryClient = useQueryClient();
   const { user, schoolId } = useAuth();
-  const { checkSubscription } = useSubscription();
+  const { refreshSubscription } = useSubscriptionContext();
   const queryKey = SUBSCRIPTION_QUERY_KEY(user?.id, schoolId || undefined);
 
   useEffect(() => {
@@ -37,8 +37,8 @@ export default function SubscriptionSuccess() {
         const maxAttempts = 5;
         
         const checkWithRetry = async () => {
-          // Force refresh subscription status
-          await checkSubscription(true);
+          // Force refresh subscription status using context
+          await refreshSubscription();
           
           // BŁĄD #8 - poprawiono: invalidate cache dla wszystkich powiązanych query
           await queryClient.invalidateQueries({ queryKey });
@@ -68,7 +68,7 @@ export default function SubscriptionSuccess() {
     };
 
     refreshSubscription();
-  }, [navigate, queryClient, checkSubscription, queryKey, user, schoolId]);
+  }, [navigate, queryClient, refreshSubscription, queryKey, user, schoolId]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">

@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Search, User, Users, Loader2 } from 'lucide-react';
+import { Search, User, Users, Loader2, Mail, Phone } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserPreferences } from '@/hooks/useUserPreferences';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 
 interface Student {
   id: string;
@@ -22,27 +27,72 @@ interface Group {
   level: string;
   maxStudents: number;
   students: Student[];
+  userPrimaryColor: string | null;
 }
 
 export default function TeacherStudents() {
   const { user, profile } = useAuth();
+  const { preferences } = useUserPreferences();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [students, setStudents] = useState<Student[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
+  const [viewingGroup, setViewingGroup] = useState<Group | null>(null);
+  const [userPrimaryColor, setUserPrimaryColor] = useState<string>('#3b82f6');
+  
+  // Get active tab from URL or default to 'students'
+  const activeTab = searchParams.get('tab') || 'students';
+  
+  // Handle tab change
+  const handleTabChange = (value: string) => {
+    const newSearchParams = new URLSearchParams(searchParams);
+    if (value === 'students') {
+      newSearchParams.delete('tab');
+    } else {
+      newSearchParams.set('tab', value);
+    }
+    setSearchParams(newSearchParams, { replace: true });
+  };
 
   useEffect(() => {
     if (!user) return;
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  // Update color when preferences change (for real-time updates after initial load)
+  useEffect(() => {
+    if (preferences?.primary_color) {
+      setUserPrimaryColor(preferences.primary_color);
+    }
+  }, [preferences?.primary_color]);
 
   const fetchData = async () => {
     try {
-      const { data: teacherData, error: teacherError } = await supabase
-        .from('teachers')
-        .select('id')
-        .eq('user_id', user?.id)
-        .maybeSingle();
+      // Fetch teacher data and user preferences in parallel to get color immediately
+      const [teacherResult, preferencesResult] = await Promise.all([
+        supabase
+          .from('teachers')
+          .select('id')
+          .eq('user_id', user?.id)
+          .maybeSingle(),
+        supabase
+          .from('user_preferences')
+          .select('primary_color')
+          .eq('user_id', user?.id)
+          .maybeSingle()
+      ]);
+
+      const { data: teacherData, error: teacherError } = teacherResult;
+      const { data: preferencesData } = preferencesResult;
+
+      // Get primary color immediately - use it directly in mapping, not from state
+      const primaryColor = preferencesData?.primary_color || '#3b82f6';
+      
+      // Set primary color in state for use in render
+      setUserPrimaryColor(primaryColor);
 
       if (teacherError || !teacherData?.id) {
         setStudents([]);
@@ -89,7 +139,7 @@ export default function TeacherStudents() {
         level: s.level,
       }));
 
-      // Map groups with their students
+      // Map groups with their students - use primaryColor directly from fetch
       const mappedGroups: Group[] = (groupsData || []).map(g => ({
         id: g.id,
         name: g.name,
@@ -106,6 +156,7 @@ export default function TeacherStudents() {
             language: s.language,
             level: s.level,
           })),
+        userPrimaryColor: primaryColor,
       }));
 
       setStudents(mappedStudents);
@@ -120,13 +171,19 @@ export default function TeacherStudents() {
   const filteredStudents = students.filter(
     (s) =>
       s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.language.toLowerCase().includes(search.toLowerCase())
+      s.email.toLowerCase().includes(search.toLowerCase()) ||
+      s.language.toLowerCase().includes(search.toLowerCase()) ||
+      (s.phone && s.phone.toLowerCase().includes(search.toLowerCase()))
   );
 
   const filteredGroups = groups.filter(
     (g) =>
       g.name.toLowerCase().includes(search.toLowerCase()) ||
-      g.language.toLowerCase().includes(search.toLowerCase())
+      g.language.toLowerCase().includes(search.toLowerCase()) ||
+      g.students.some(s => 
+        s.name.toLowerCase().includes(search.toLowerCase()) ||
+        s.email.toLowerCase().includes(search.toLowerCase())
+      )
   );
 
   const totalStudentsCount = students.length + groups.reduce((acc, g) => acc + g.students.length, 0);
@@ -173,7 +230,7 @@ export default function TeacherStudents() {
               </div>
             </div>
 
-            <Tabs defaultValue="students" className="w-full">
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
               <TabsList className="mb-4">
                 <TabsTrigger value="students" className="gap-2">
                   <User className="h-4 w-4" />
@@ -237,10 +294,14 @@ export default function TeacherStudents() {
                     {filteredGroups.map((group) => (
                       <div
                         key={group.id}
-                        className="glass-card-hover p-4"
+                        className="glass-card-hover p-4 cursor-pointer"
+                        onClick={() => setViewingGroup(group)}
                       >
                         <div className="flex items-start gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/10 text-accent flex-shrink-0">
+                          <div 
+                            className="flex h-10 w-10 items-center justify-center rounded-full text-white flex-shrink-0"
+                            style={{ backgroundColor: group.userPrimaryColor || userPrimaryColor }}
+                          >
                             <Users className="h-5 w-5" />
                           </div>
                           <div className="flex-1 min-w-0">
@@ -259,17 +320,23 @@ export default function TeacherStudents() {
                             
                             {/* Lista uczniów w grupie */}
                             {group.students.length > 0 && (
-                              <div className="mt-3 space-y-1">
+                              <div className="mt-3 space-y-2 border-t border-border/50 pt-3">
+                                <p className="text-xs font-medium text-muted-foreground mb-2">Uczniowie w grupie:</p>
                                 {group.students.slice(0, 5).map((student) => (
                                   <div key={student.id} className="flex items-center gap-2 text-sm">
-                                    <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-xs">
+                                    <div className="avatar-bubble h-6 w-6 text-xs flex-shrink-0">
                                       {student.name.split(' ').map((n) => n[0]).join('')}
                                     </div>
-                                    <span className="truncate">{student.name}</span>
+                                    <div className="flex-1 min-w-0">
+                                      <span className="font-medium text-foreground truncate block">{student.name}</span>
+                                      {student.email && (
+                                        <span className="text-xs text-muted-foreground truncate block">{student.email}</span>
+                                      )}
+                                    </div>
                                   </div>
                                 ))}
                                 {group.students.length > 5 && (
-                                  <p className="text-xs text-muted-foreground">
+                                  <p className="text-xs text-muted-foreground mt-2">
                                     +{group.students.length - 5} więcej
                                   </p>
                                 )}
@@ -286,6 +353,108 @@ export default function TeacherStudents() {
           </>
         )}
       </div>
+
+      {/* Group Details Sheet */}
+      <Sheet open={!!viewingGroup} onOpenChange={(open) => !open && setViewingGroup(null)}>
+        <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
+          {viewingGroup && (
+            <>
+              <SheetHeader className="text-left">
+                <div className="flex items-center gap-4">
+                  <div 
+                    className="flex h-16 w-16 items-center justify-center rounded-full text-white flex-shrink-0"
+                    style={{ backgroundColor: viewingGroup.userPrimaryColor || userPrimaryColor }}
+                  >
+                    <Users className="h-8 w-8" />
+                  </div>
+                  <div>
+                    <SheetTitle className="text-xl">{viewingGroup.name}</SheetTitle>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      <Badge variant="secondary" className="text-xs">
+                        {viewingGroup.language}
+                      </Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        {viewingGroup.level}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              </SheetHeader>
+
+              <div className="mt-6 space-y-6">
+                {/* Group Info */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg border border-border bg-card p-3">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Users className="h-4 w-4" />
+                      <span className="text-xs">Uczniowie</span>
+                    </div>
+                    <p className="mt-1 font-medium">
+                      {viewingGroup.students.length} / {viewingGroup.maxStudents}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-card p-3">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <User className="h-4 w-4" />
+                      <span className="text-xs">Język</span>
+                    </div>
+                    <p className="mt-1 truncate font-medium">{viewingGroup.language}</p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Students List */}
+                <div>
+                  <h4 className="mb-3 text-sm font-medium text-foreground">
+                    Uczniowie w grupie ({viewingGroup.students.length})
+                  </h4>
+                  {viewingGroup.students.length > 0 ? (
+                    <div className="max-h-96 space-y-2 overflow-y-auto scrollbar-none pr-1">
+                      {viewingGroup.students.map((student) => (
+                        <div key={student.id} className="rounded-lg border border-border bg-card p-3 hover:bg-muted/30 transition-colors">
+                          <div className="flex items-start gap-3">
+                            <div className="avatar-bubble h-10 w-10 text-sm flex-shrink-0">
+                              {student.name.split(' ').map((n) => n[0]).join('')}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-foreground">{student.name}</p>
+                              <div className="mt-1 space-y-1">
+                                {student.email && (
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Mail className="h-3 w-3" />
+                                    <span className="truncate">{student.email}</span>
+                                  </div>
+                                )}
+                                {student.phone && (
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Phone className="h-3 w-3" />
+                                    <span>{student.phone}</span>
+                                  </div>
+                                )}
+                                <div className="mt-2 flex items-center gap-2">
+                                  <Badge variant="secondary" className="text-xs">
+                                    {student.language}
+                                  </Badge>
+                                  <Badge variant="outline" className="text-xs">
+                                    {student.level}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Brak uczniów w grupie</p>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </DashboardLayout>
   );
 }

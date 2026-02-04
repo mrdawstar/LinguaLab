@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSubscriptionContext } from '@/contexts/SubscriptionContext';
 import { useSubscription } from '@/hooks/useSubscription';
 import { PLAN_CONFIGS, PlanType } from '@/lib/subscriptionLimits';
 import { CheckCircle2, Crown, Sparkles, TrendingUp, Infinity as InfinityIcon, DollarSign } from 'lucide-react';
@@ -61,7 +62,9 @@ const plans = [
 ];
 
 export function PlanComparison() {
-  const { subscription_plan, createCheckout } = useSubscription();
+  const { subscription } = useSubscriptionContext();
+  const { createCheckout } = useSubscription();
+  const { subscription_plan } = subscription;
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly');
   const [selectedPlan, setSelectedPlan] = useState<PlanType | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);

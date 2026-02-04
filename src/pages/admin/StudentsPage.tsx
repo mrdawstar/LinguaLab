@@ -135,14 +135,8 @@ export default function StudentsPage() {
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                      <div className={cn(
-                        "flex h-10 w-10 items-center justify-center rounded-full",
-                        student.payment_status === 'no_payment' && 'bg-destructive text-destructive-foreground',
-                        student.payment_status === 'warning' && 'bg-amber-500 text-white',
-                        student.payment_status === 'active' && 'bg-emerald-500 text-white',
-                        !student.payment_status && 'bg-primary/10 text-primary'
-                      )}>
-                        <User className="h-5 w-5" />
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+                        <User className="h-4 w-4" />
                       </div>
                       <div>
                         <p className="font-medium text-foreground">{student.name}</p>

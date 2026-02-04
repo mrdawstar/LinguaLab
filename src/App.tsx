@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { useEffect, useLayoutEffect } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { UserPreferencesLoader } from "@/components/UserPreferencesLoader";
 import { SubscriptionGuard } from "@/components/layout/SubscriptionGuard";
 import { SubscriptionPageGuard } from "@/components/layout/SubscriptionPageGuard";
@@ -64,9 +65,10 @@ const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <ThemeProvider>
-          <UserPreferencesLoader>
-            <TooltipProvider>
+        <SubscriptionProvider>
+          <ThemeProvider>
+            <UserPreferencesLoader>
+              <TooltipProvider>
               <Toaster />
               <Sonner />
               <BrowserRouter>
@@ -101,9 +103,10 @@ const App = () => (
                   </Routes>
                 </ErrorBoundary>
               </BrowserRouter>
-            </TooltipProvider>
-          </UserPreferencesLoader>
-        </ThemeProvider>
+              </TooltipProvider>
+            </UserPreferencesLoader>
+          </ThemeProvider>
+        </SubscriptionProvider>
       </AuthProvider>
     </QueryClientProvider>
   </ErrorBoundary>

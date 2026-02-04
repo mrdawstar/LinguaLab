@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { BookOpen, Users, Clock, TrendingUp, Loader2 } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,12 +21,7 @@ export function TeacherStats() {
     attendanceChange: 0,
   });
 
-  useEffect(() => {
-    if (!user) return;
-    fetchStats();
-  }, [user, fetchStats]);
-
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const today = format(new Date(), 'yyyy-MM-dd');
       const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd');
@@ -114,7 +109,12 @@ export function TeacherStats() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    fetchStats();
+  }, [user, fetchStats]);
 
   if (loading) {
     return (
