@@ -74,27 +74,43 @@ export function MobileNav() {
       <SheetContent 
         side="left" 
         className="app-mobile-nav w-[280px] sm:w-[320px] p-0 border-r border-border/50 bg-background/95 backdrop-blur-xl"
+        style={{ 
+          height: '100vh', 
+          maxHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          padding: 0
+        }}
       >
-        {/* Header with gradient */}
-        <div className="relative flex h-20 items-center justify-between border-b border-border/50 px-6 bg-gradient-to-br from-primary/5 via-background to-background">
-          <Link 
-            to="/" 
-            className="flex items-center gap-3 group" 
-            onClick={() => setOpen(false)}
-          >
-            <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-primary shadow-lg shadow-primary/25 transition-all duration-300 group-hover:scale-110 group-hover:shadow-xl group-hover:shadow-primary/30">
-              <GraduationCap className="h-6 w-6 text-primary-foreground transition-transform duration-300 group-hover:rotate-12" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-lg font-bold text-foreground tracking-tight">LinguaLab</span>
-              <span className="text-xs text-muted-foreground">System CRM</span>
-            </div>
-          </Link>
-        </div>
+        <div className="flex flex-col h-full overflow-hidden">
+          {/* Header with gradient */}
+          <div className="relative flex h-20 flex-shrink-0 items-center justify-between border-b border-border/50 px-6 bg-gradient-to-br from-primary/5 via-background to-background">
+            <Link 
+              to="/" 
+              className="flex items-center gap-3 group" 
+              onClick={() => setOpen(false)}
+            >
+              <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-primary shadow-lg shadow-primary/25 transition-all duration-300 group-hover:scale-110 group-hover:shadow-xl group-hover:shadow-primary/30">
+                <GraduationCap className="h-6 w-6 text-primary-foreground transition-transform duration-300 group-hover:rotate-12" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-lg font-bold text-foreground tracking-tight">LinguaLab</span>
+                <span className="text-xs text-muted-foreground">System CRM</span>
+              </div>
+            </Link>
+          </div>
 
-        {/* Navigation with smooth scroll */}
-        <nav className="flex-1 overflow-y-auto py-4 px-3 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
-          <div className="space-y-1.5">
+          {/* Navigation with smooth scroll */}
+          <nav 
+            className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-3"
+            style={{ 
+              WebkitOverflowScrolling: 'touch',
+              minHeight: 0,
+              flex: '1 1 auto'
+            }}
+          >
+            <div className="space-y-1.5">
             {navItems.map((item, index) => {
               const isActive = location.pathname === item.path;
               return (
@@ -140,11 +156,11 @@ export function MobileNav() {
                 </Link>
               );
             })}
-          </div>
-        </nav>
+            </div>
+          </nav>
 
-        {/* User section with improved design */}
-        <div className="border-t border-border/50 bg-gradient-to-t from-muted/30 to-transparent p-4">
+          {/* User section with improved design - fixed at bottom */}
+          <div className="flex-shrink-0 border-t border-border/50 bg-gradient-to-t from-muted/30 to-transparent p-4 bg-background/95">
           <div className="flex items-center gap-3 rounded-2xl bg-card/50 p-3.5 backdrop-blur-sm border border-border/50 shadow-sm">
             <Avatar className="h-11 w-11 border-2 border-primary/20 shadow-md">
               <AvatarFallback className="bg-gradient-primary text-primary-foreground font-bold text-sm">
@@ -173,6 +189,7 @@ export function MobileNav() {
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
+        </div>
         </div>
       </SheetContent>
     </Sheet>
