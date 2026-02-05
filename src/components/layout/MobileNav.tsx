@@ -81,7 +81,8 @@ export function MobileNav() {
           padding: 0,
           display: 'flex',
           flexDirection: 'column',
-          WebkitOverflowScrolling: 'touch'
+          WebkitOverflowScrolling: 'touch',
+          position: 'relative'
         }}
       >
         {/* Header with gradient */}
@@ -109,12 +110,13 @@ export function MobileNav() {
             WebkitTransform: 'translateZ(0)',
             flex: '1 1 auto',
             minHeight: 0,
-            maxHeight: 'calc(100vh - 20rem)',
+            maxHeight: 'none',
             position: 'relative',
-            overscrollBehavior: 'contain'
+            overscrollBehavior: 'contain',
+            paddingBottom: '1rem'
           }}
         >
-          <div className="space-y-1.5 pb-4">
+          <div className="space-y-1.5 pb-8">
             {navItems.map((item, index) => {
               const isActive = location.pathname === item.path;
               return (
@@ -165,10 +167,14 @@ export function MobileNav() {
 
         {/* User section with improved design - fixed at bottom */}
         <div 
-          className="flex-shrink-0 border-t border-border/50 bg-background/95 p-4 z-10"
+          className="flex-shrink-0 border-t border-border/50 bg-background/95 p-4 z-20"
           style={{
-            position: 'relative',
-            marginTop: 'auto'
+            position: 'sticky',
+            bottom: 0,
+            marginTop: 'auto',
+            backgroundColor: 'hsl(var(--background) / 0.95)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)'
           }}
         >
           <div className="flex items-center gap-3 rounded-2xl bg-card/50 p-3.5 backdrop-blur-sm border border-border/50 shadow-sm">

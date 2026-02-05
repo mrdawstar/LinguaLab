@@ -263,6 +263,7 @@
     -webkit-overflow-scrolling: touch;
     -webkit-transform: translateZ(0);
     min-height: 0;
+    max-height: calc(100vh - 12rem); /* Zostaw miejsce na header (5rem) i user section (7rem) */
     overscroll-behavior: contain;
     position: relative;
   }
@@ -286,12 +287,16 @@
     background-color: hsl(var(--muted-foreground));
   }
 
-  /* Ensure user section stays at bottom on iOS */
+  /* Ensure user section stays at bottom on iOS and is always visible */
   .app-mobile-nav > div:last-child {
     flex-shrink: 0;
-    position: relative;
-    z-index: 10;
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
     margin-top: auto;
+    background-color: hsl(var(--background) / 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
   }
 
 
