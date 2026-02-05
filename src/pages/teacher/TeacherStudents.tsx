@@ -267,9 +267,11 @@ export default function TeacherStudents() {
                               <span className="rounded bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                                 {student.language}
                               </span>
-                              <span className="rounded bg-muted px-2 py-0.5 text-xs">
-                                {student.level}
-                              </span>
+                              {student.level && (
+                                <span className="rounded bg-muted px-2 py-0.5 text-xs">
+                                  {student.level}
+                                </span>
+                              )}
                             </div>
                             {student.phone && (
                               <p className="mt-2 text-xs text-muted-foreground">{student.phone}</p>

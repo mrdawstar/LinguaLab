@@ -153,7 +153,7 @@ export function StudentDetailsSheet({
                   <GraduationCap className="h-4 w-4" />
                   <span className="text-xs">Poziom</span>
                 </div>
-                <p className="mt-1 font-medium">{student.level}</p>
+                <p className="mt-1 font-medium">{student.level || 'Nie określono'}</p>
               </div>
             </div>
           </div>

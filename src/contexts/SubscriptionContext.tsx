@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback, useMemo, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from './AuthContext';
-import { SubscriptionStatus, useSubscription } from '@/hooks/useSubscription';
+import { SubscriptionStatus, useSubscription, SUBSCRIPTION_QUERY_KEY } from '@/hooks/useSubscription';
 
 interface SubscriptionContextType {
   subscription: SubscriptionStatus;
@@ -31,6 +32,13 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const [shouldRefresh, setShouldRefresh] = useState(false);
   
   // Użyj hooka useSubscription tylko do pobrania danych, nie do zarządzania stanem
+  const queryClient = useQueryClient();
+  // Użyj useMemo aby queryKey nie zmieniał się przy każdym renderze
+  const queryKey = useMemo(() => SUBSCRIPTION_QUERY_KEY(user?.id, schoolId || undefined), [user?.id, schoolId]);
+  
+  // Użyj useRef do śledzenia poprzedniego stanu - unikaj dodawania subscription do zależności useEffect
+  const prevSubscriptionRef = useRef<SubscriptionStatus>(DEFAULT_SUBSCRIPTION_STATUS);
+  
   const {
     subscribed,
     subscription_plan,
@@ -45,45 +53,99 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     checkSubscription,
   } = useSubscription();
 
-  // Synchronizuj stan z React Query tylko gdy:
-  // 1. Dane są załadowane i nie są w stanie loading
-  // 2. Albo gdy jest to pierwsze załadowanie
-  // 3. Albo gdy powinno być odświeżone (shouldRefresh === true)
+  // Synchronizuj stan z React Query - użyj cache natychmiast jeśli dostępny
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SubscriptionContext.tsx:53',message:'useEffect triggered',data:{userId:user?.id,schoolId,queryIsLoading,isInitialized,shouldRefresh,hasCachedData:!!queryClient.getQueryData(queryKey)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
+    
     // Jeśli użytkownik nie jest zalogowany, resetuj stan
     if (!user || !schoolId) {
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SubscriptionContext.tsx:58',message:'Resetting state - no user/schoolId',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       setSubscription(DEFAULT_SUBSCRIPTION_STATUS);
       setIsInitialized(false);
       setShouldRefresh(false);
       return;
     }
 
-    // Jeśli query się jeszcze wykonuje i nie mamy jeszcze danych, nie aktualizuj stanu
-    if (queryIsLoading && !isInitialized) {
-      return;
-    }
-
-    // Aktualizuj stan tylko gdy:
-    // 1. To pierwsze załadowanie (isInitialized === false) I query się zakończyło
-    // 2. Albo gdy powinno być odświeżone (shouldRefresh === true)
-    // NIE aktualizuj przy każdym renderze - tylko gdy faktycznie coś się zmieniło
-    if (!isInitialized || shouldRefresh) {
-      const newStatus: SubscriptionStatus = {
-        subscribed,
-        subscription_plan,
-        subscription_end,
-        subscription_period_start,
-        trial_active,
-        trial_days_left,
-        trial_ends_at,
-        access_allowed,
+    // Sprawdź czy mamy cache - użyj go natychmiast jeśli dostępny
+    const cachedData = queryClient.getQueryData<SubscriptionStatus>(queryKey);
+    
+    // Aktualizuj stan gdy:
+    // 1. Query się zakończyło (!queryIsLoading) - wtedy mamy faktyczne dane z API
+    // 2. Albo gdy mamy cache (cachedData) - użyj go natychmiast, nie czekaj na query
+    // 3. Albo gdy powinno być odświeżone (shouldRefresh === true)
+    // NIE aktualizuj jeśli query się jeszcze wykonuje i nie mamy cache
+    if (!queryIsLoading || cachedData !== undefined || shouldRefresh) {
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SubscriptionContext.tsx:75',message:'Updating subscription state',data:{queryIsLoading,hasCachedData:!!cachedData,shouldRefresh,isInitialized},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
+      
+      // Jeśli mamy cache, użyj go zamiast wartości z hooka (które mogą być domyślne)
+      const dataToUse = cachedData || {
+        subscribed: subscribed ?? false,
+        subscription_plan: subscription_plan ?? null,
+        subscription_end: subscription_end ?? null,
+        subscription_period_start: subscription_period_start ?? null,
+        trial_active: trial_active ?? false,
+        trial_days_left: trial_days_left ?? 0,
+        trial_ends_at: trial_ends_at ?? null,
+        access_allowed: access_allowed ?? false,
         isLoading: false,
         error: queryError || null,
       };
+      
+      const newStatus: SubscriptionStatus = {
+        subscribed: dataToUse.subscribed ?? false,
+        subscription_plan: dataToUse.subscription_plan ?? null,
+        subscription_end: dataToUse.subscription_end ?? null,
+        subscription_period_start: dataToUse.subscription_period_start ?? null,
+        trial_active: dataToUse.trial_active ?? false,
+        trial_days_left: dataToUse.trial_days_left ?? 0,
+        trial_ends_at: dataToUse.trial_ends_at ?? null,
+        access_allowed: dataToUse.access_allowed ?? false,
+        isLoading: false,
+        error: dataToUse.error || queryError || null,
+      };
 
-      setSubscription(newStatus);
-      setIsInitialized(true);
-      setShouldRefresh(false);
+      // Porównaj czy nowy status różni się od poprzedniego - unikaj niepotrzebnych aktualizacji
+      const prevSubscription = prevSubscriptionRef.current;
+      const hasChanged = 
+        prevSubscription.subscribed !== newStatus.subscribed ||
+        prevSubscription.subscription_plan !== newStatus.subscription_plan ||
+        prevSubscription.subscription_end !== newStatus.subscription_end ||
+        prevSubscription.access_allowed !== newStatus.access_allowed ||
+        prevSubscription.isLoading !== newStatus.isLoading ||
+        !isInitialized;
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SubscriptionContext.tsx:110',message:'Checking if state changed',data:{hasChanged,isInitialized,prevAccessAllowed:prevSubscription.access_allowed,newAccessAllowed:newStatus.access_allowed},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
+
+      if (hasChanged) {
+        prevSubscriptionRef.current = newStatus; // Zaktualizuj ref przed setState
+        setSubscription(newStatus);
+        setIsInitialized(true);
+        setShouldRefresh(false);
+      }
+    } else {
+      // Jeśli query się jeszcze wykonuje i nie mamy cache, ustaw isLoading na true
+      // To zapobiegnie pokazaniu ekranu "brak aktywnej subskrypcji" podczas ładowania
+      // WAŻNE: Sprawdź czy już nie ustawiliśmy loading state - unikaj niepotrzebnych aktualizacji
+      const currentSubscription = prevSubscriptionRef.current;
+      if (!isInitialized && !currentSubscription.isLoading) {
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SubscriptionContext.tsx:120',message:'Setting loading state',data:{isInitialized,currentIsLoading:currentSubscription.isLoading},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'E'})}).catch(()=>{});
+        // #endregion
+        const loadingStatus = {
+          ...DEFAULT_SUBSCRIPTION_STATUS,
+          isLoading: true,
+        };
+        prevSubscriptionRef.current = loadingStatus; // Zaktualizuj ref przed setState
+        setSubscription(loadingStatus);
+      }
     }
   }, [
     user,
@@ -100,6 +162,9 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     queryError,
     isInitialized,
     shouldRefresh,
+    queryClient,
+    queryKey,
+    // USUNIĘTO: subscription - nie dodawaj go do zależności, użyj useRef zamiast tego
   ]);
 
   // Funkcja do ręcznego odświeżenia (używana po zmianie planu)
@@ -112,6 +177,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
   // Funkcja do unieważnienia cache (używana przy wylogowaniu)
   const invalidateSubscription = useCallback(() => {
+    prevSubscriptionRef.current = DEFAULT_SUBSCRIPTION_STATUS;
     setSubscription(DEFAULT_SUBSCRIPTION_STATUS);
     setIsInitialized(false);
     setShouldRefresh(false);
@@ -127,7 +193,8 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   // isLoading powinno być true tylko gdy:
   // 1. Nie mamy jeszcze zainicjalizowanych danych (isInitialized === false)
   // 2. I query się jeszcze wykonuje (queryIsLoading === true)
-  // Jeśli mamy już dane w cache, isLoading powinno być false nawet jeśli query się wykonuje w tle
+  // Jeśli query się zakończyło (nawet z błędem), nie pokazuj loading
+  // Jeśli mamy już zainicjalizowane dane, nie pokazuj loading nawet jeśli query się wykonuje w tle
   const isLoading = !isInitialized && queryIsLoading;
 
   const value: SubscriptionContextType = {

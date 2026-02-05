@@ -17,9 +17,9 @@ export interface SubscriptionStatus {
 }
 
 export const SUBSCRIPTION_QUERY_KEY = (userId?: string, schoolId?: string) => ['subscription-status', userId, schoolId];
-const CACHE_DURATION = 10 * 60 * 1000; // 10 minut - dane są świeże przez 10 minut
-const REFETCH_INTERVAL = 10 * 60 * 1000; // 10 minut - automatyczne odświeżanie co 10 minut
-const CACHE_TIME = 30 * 60 * 1000; // 30 minut - cache przechowywany przez 30 minut po unmount
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minut - dane są świeże przez 30 minut (zwiększone z 10)
+const REFETCH_INTERVAL = 30 * 60 * 1000; // 30 minut - automatyczne odświeżanie co 30 minut (zwiększone z 10)
+const CACHE_TIME = 60 * 60 * 1000; // 60 minut - cache przechowywany przez 60 minut po unmount (zwiększone z 30)
 
 export function useSubscription() {
   const { user, schoolId } = useAuth();
@@ -46,8 +46,9 @@ export function useSubscription() {
     
     // Sprawdź czy szkoła jest nowa (utworzona w ciągu ostatnich 7 dni) i nie ma aktywnej subskrypcji
     const schoolCreatedAt = school.created_at ? new Date(school.created_at) : null;
-    const daysSinceCreation = schoolCreatedAt ? Math.ceil((now.getTime() - schoolCreatedAt.getTime()) / (1000 * 60 * 60 * 24)) : null;
-    const isNewSchool = schoolCreatedAt && daysSinceCreation !== null && daysSinceCreation <= 7;
+    // Poprawione: użyj Math.floor zamiast Math.ceil dla dokładniejszego obliczenia dni
+    // Sprawdź czy szkoła jest nowa - jeśli created_at + 7 dni jest w przyszłości, to jest nowa szkoła
+    const isNewSchool = schoolCreatedAt ? (new Date(schoolCreatedAt.getTime() + 7 * 24 * 60 * 60 * 1000) > now) : false;
     
     // Określ trial_ends_at - użyj z bazy lub oblicz na podstawie created_at
     // BŁĄD #10 - sprawdź czy trial_ends_at nie jest w przeszłości
@@ -60,8 +61,11 @@ export function useSubscription() {
       }
     } else if (isNewSchool && schoolCreatedAt && school.subscription_status !== 'active') {
       // Jeśli nie ma trial_ends_at ale szkoła jest nowa i nie ma aktywnej subskrypcji, oblicz jako created_at + 7 dni
+      // Poprawione: dokładnie 7 dni od rejestracji (włącznie z dniem rejestracji)
       trialEndsAt = new Date(schoolCreatedAt);
       trialEndsAt.setDate(trialEndsAt.getDate() + 7);
+      // Ustaw godzinę na koniec dnia (23:59:59) aby mieć pełne 7 dni
+      trialEndsAt.setHours(23, 59, 59, 999);
     }
     
     const subscribed = school.subscription_status === 'active';
@@ -70,10 +74,12 @@ export function useSubscription() {
     // Jeśli użytkownik ma aktywną subskrypcję (subscribed i subscription_plan jest ustawiony), trial jest zakończony
     const trialActive = (trialEndsAt ? now < trialEndsAt : false) && 
                         !(subscribed && school.subscription_plan);
+    // Poprawione: użyj Math.floor zamiast Math.ceil dla dokładniejszego obliczenia dni
+    // Jeśli trial kończy się za 6.5 dnia, pokaż 6 dni (nie 7)
     const trialDaysLeft = trialActive && trialEndsAt
       ? Math.max(
           0,
-          Math.ceil((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+          Math.floor((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
         )
       : 0;
 
@@ -227,15 +233,17 @@ export function useSubscription() {
     queryKey,
     queryFn: fetchSubscriptionStatus,
     enabled: queryEnabled, // Tylko gdy użytkownik jest zalogowany i ma schoolId
-    staleTime: CACHE_DURATION, // Dane są "świeże" przez 10 minut - React Query nie będzie refetch jeśli dane są świeże
-    gcTime: CACHE_TIME, // Cache przechowywany przez 30 minut po unmount
-    refetchInterval: REFETCH_INTERVAL, // Automatyczne odświeżanie co 10 minut
+    staleTime: CACHE_DURATION, // Dane są "świeże" przez 30 minut - React Query nie będzie refetch jeśli dane są świeże
+    gcTime: CACHE_TIME, // Cache przechowywany przez 60 minut po unmount
+    refetchInterval: REFETCH_INTERVAL, // Automatyczne odświeżanie co 30 minut
     refetchOnMount: false, // NIE odświeżaj przy montowaniu - React Query automatycznie użyje cache jeśli dane są świeże (staleTime)
-    refetchOnWindowFocus: false, // NIE odświeżaj przy focusie okna
-    refetchOnReconnect: true, // Odśwież przy ponownym połączeniu
+    refetchOnWindowFocus: false, // NIE odświeżaj przy focusie okna - użyj cache
+    refetchOnReconnect: false, // NIE odświeżaj przy ponownym połączeniu - użyj cache (zmienione z true)
     retry: 1, // Tylko jedna próba ponowienia przy błędzie
     retryDelay: 1000,
     placeholderData: previousData || undefined, // Użyj cache jako placeholder podczas refetch
+    // Użyj cache natychmiast jeśli dostępny - nie czekaj na nowe dane
+    initialData: previousData || undefined,
   });
   
   // Użyj status z query lub cache - preferuj cache jeśli dostępny
@@ -454,10 +462,13 @@ export function useSubscription() {
   // Zwracamy status z obsługą błędów
   const errorMessage = queryError instanceof Error ? queryError.message : null;
 
+  // Jeśli mamy błąd ale mamy cache, użyj cache zamiast pokazywać błąd
+  const finalError = (status || previousData) ? null : (errorMessage || finalStatus.error);
+
   return {
     ...finalStatus,
     isLoading: effectiveIsLoading, // Użyj effectiveIsLoading zamiast isLoading
-    error: errorMessage || finalStatus.error,
+    error: finalError,
     checkSubscription,
     createCheckout,
     openCustomerPortal,

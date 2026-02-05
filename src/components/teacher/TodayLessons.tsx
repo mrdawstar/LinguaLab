@@ -31,7 +31,7 @@ interface Lesson {
 }
 
 export function TodayLessons() {
-  const { user } = useAuth();
+  const { user, schoolId } = useAuth();
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -57,7 +57,8 @@ export function TodayLessons() {
   const callApplyPackageUsage = async (
     lessonId: string,
     studentId: string,
-    attended: boolean
+    attended: boolean,
+    attendanceId?: string | null
   ) => {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -105,6 +106,7 @@ export function TodayLessons() {
           lesson_id: lessonId,
           student_id: studentId,
           attended,
+          attendance_id: attendanceId || null,
         }),
       });
 
@@ -303,59 +305,125 @@ export function TodayLessons() {
     const student = lesson.students.find(s => s.id === studentId);
     if (!student) return;
 
+    // Cycle: null -> true -> false -> true
+    const newPresent = student.present === null ? true : !student.present;
+    
+    // OPTIMISTIC UPDATE - zaktualizuj stan lokalny natychmiast (bez czekania na API)
+    const previousState = { ...student };
+    
+    // Zaktualizuj stan lokalny natychmiast - UI reaguje od razu
+    setLessons(prev => prev.map(l => {
+      if (l.id === lessonId) {
+        return {
+          ...l,
+          students: l.students.map(s => {
+            if (s.id === studentId) {
+              return { ...s, present: newPresent };
+            }
+            return s;
+          }),
+        };
+      }
+      return l;
+    }));
+
+    // Zapisz do bazy danych asynchronicznie (nie blokuj UI)
+    // Ustaw savingAttendance tylko na bardzo krótko, aby pokazać że operacja się wykonuje
     setSavingAttendance(true);
     
-    try {
-      // Cycle: null -> true -> false -> true
-      const newPresent = student.present === null ? true : !student.present;
-
-      if (student.attendanceId) {
-        const { error } = await supabase
-          .from('lesson_attendance')
-          .update({
-            attended: newPresent,
-          })
-          .eq('id', student.attendanceId);
-      
-        if (error) throw error;
-
-        const packageUpdated = await callApplyPackageUsage(
-          lessonId,
-          studentId,
-          newPresent
-        );
-        if (!packageUpdated) {
-          toast.error('Nie udało się zaktualizować pakietu');
+    (async () => {
+      try {
+        let finalAttendanceId: string | null = null;
+        
+        if (student.attendanceId) {
+          // Update existing attendance record
+          const { error } = await supabase
+            .from('lesson_attendance')
+            .update({
+              attended: newPresent,
+            })
+            .eq('id', student.attendanceId);
+        
+          if (error) throw error;
+          finalAttendanceId = student.attendanceId;
+        } else {
+          // Create new attendance record
+          const { data, error } = await supabase
+            .from('lesson_attendance')
+            .insert({
+              lesson_id: lessonId,
+              student_id: studentId,
+              attended: newPresent,
+            })
+            .select()
+            .single();
+          
+          if (error) throw error;
+          finalAttendanceId = data.id;
+          
+          // Update local state with new attendance ID
+          setLessons(prev => prev.map(l => {
+            if (l.id === lessonId) {
+              return {
+                ...l,
+                students: l.students.map(s => {
+                  if (s.id === studentId) {
+                    return { ...s, present: newPresent, attendanceId: data.id };
+                  }
+                  return s;
+                }),
+              };
+            }
+            return l;
+          }));
         }
-      } else {
-        // Create new attendance record
-        const { data, error } = await supabase
-          .from('lesson_attendance')
-          .insert({
-            lesson_id: lessonId,
-            student_id: studentId,
-            attended: newPresent,
-          })
-          .select()
-          .single();
-        if (error) throw error;
-        const packageUpdated = await callApplyPackageUsage(
-          lessonId,
-          studentId,
-          newPresent
-        );
-        if (!packageUpdated) {
-          toast.error('Nie udało się zaktualizować pakietu');
+
+        // Wywołaj apply-package-usage PO utworzeniu/aktualizacji rekordu, z poprawnym attendanceId
+        // Trigger w bazie powinien ustawić revenue_amount, ale wywołujemy też Edge Function
+        // aby upewnić się, że wszystko jest zsynchronizowane
+        if (newPresent && finalAttendanceId) {
+          callApplyPackageUsage(lessonId, studentId, newPresent, finalAttendanceId).catch((error) => {
+            console.error('Error updating package usage (non-critical):', error);
+            // Nie pokazuj błędu użytkownikowi - trigger w bazie powinien zadziałać
+          });
+        } else if (!newPresent && finalAttendanceId) {
+          // Jeśli odznaczamy obecność, również wywołaj funkcję aby przywrócić lekcję do pakietu
+          callApplyPackageUsage(lessonId, studentId, newPresent, finalAttendanceId).catch((error) => {
+            console.error('Error updating package usage (non-critical):', error);
+          });
         }
 
-        // Update local state with new attendance ID
+        // Invaliduj tylko potrzebne query - selektywnie i bez refetch
+        // Użyj setTimeout aby nie blokować UI
+        setTimeout(() => {
+          queryClient.invalidateQueries({ 
+            queryKey: ['packages'],
+            refetchType: 'none' // Nie wykonuj refetch, tylko oznacz jako stale
+          });
+          queryClient.invalidateQueries({ 
+            queryKey: ['student-packages'],
+            refetchType: 'none'
+          });
+          // Invaliduj również actualRevenue dla admina - aby widział zaktualizowaną kwotę
+          if (schoolId) {
+            queryClient.invalidateQueries({ 
+              queryKey: ['actualRevenue', schoolId],
+              refetchType: 'none'
+            });
+          }
+        }, 0);
+        
+      } catch (error) {
+        console.error('Error saving attendance:', error);
+        
+        // ROLLBACK - przywróć poprzedni stan w przypadku błędu
         setLessons(prev => prev.map(l => {
           if (l.id === lessonId) {
             return {
               ...l,
               students: l.students.map(s => {
                 if (s.id === studentId) {
-                  return { ...s, present: newPresent, attendanceId: data.id };
+                  return { ...s, present: previousState.present, attendanceId: previousState.attendanceId };
                 }
                 return s;
               }),
@@ -363,39 +431,13 @@ export function TodayLessons() {
           }
           return l;
         }));
-        queryClient.invalidateQueries({ queryKey: ['packages'] });
-        queryClient.invalidateQueries({ queryKey: ['student-packages'] });
-        queryClient.invalidateQueries({ queryKey: ['students'] });
         
-        setSavingAttendance(false);
-        return;
+        toast.error('Błąd podczas zapisywania obecności');
+      } finally {
+        // Wyłącz savingAttendance bardzo szybko - UI już się zaktualizował
+        setTimeout(() => setSavingAttendance(false), 100);
       }
-
-      // Update local state
-      setLessons(prev => prev.map(l => {
-        if (l.id === lessonId) {
-          return {
-            ...l,
-            students: l.students.map(s => {
-              if (s.id === studentId) {
-                return { ...s, present: newPresent };
-              }
-              return s;
-            }),
-          };
-        }
-        return l;
-      }));
-
-      queryClient.invalidateQueries({ queryKey: ['packages'] });
-      queryClient.invalidateQueries({ queryKey: ['student-packages'] });
-      queryClient.invalidateQueries({ queryKey: ['students'] });
-    } catch (error) {
-      console.error('Error saving attendance:', error);
-      toast.error('Błąd podczas zapisywania obecności');
-    } finally {
-      setSavingAttendance(false);
-    }
+    })();
   };
 
   const updateComment = async (lessonId: string, studentId: string, comment: string) => {

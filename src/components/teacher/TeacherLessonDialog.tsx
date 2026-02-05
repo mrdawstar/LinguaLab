@@ -207,7 +207,7 @@ export function TeacherLessonDialog({ open, onOpenChange, defaultDate, defaultHo
                         <SelectItem value="none">Brak</SelectItem>
                         {myStudents.map((student) => (
                           <SelectItem key={student.id} value={student.id}>
-                            {student.name} ({student.language} {student.level})
+                            {student.name} ({student.language}{student.level ? ` ${student.level}` : ''})
                           </SelectItem>
                         ))}
                       </SelectContent>

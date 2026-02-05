@@ -48,7 +48,7 @@ const studentSchema = z.object({
   phone: z.string().optional(),
   instagram: z.string().optional(),
   language: z.string().min(1, 'Wybierz język'),
-  level: z.string().min(1, 'Wybierz poziom'),
+  level: z.string().optional().or(z.literal('')),
   teacher_id: z.string().min(1, 'Nauczyciel jest wymagany'),
   group_id: z.string().optional().nullable(),
   status: z.enum(['active', 'inactive', 'paused']),
@@ -95,7 +95,7 @@ export function StudentDialog({ open, onOpenChange, student }: StudentDialogProp
         phone: student.phone || '',
         instagram: (student as any).instagram || '',
         language: student.language,
-        level: student.level,
+        level: student.level || '',
         teacher_id: student.teacher_id || '',
         group_id: student.group_id,
         status: (student.status as 'active' | 'inactive' | 'paused') || 'active',
@@ -129,7 +129,7 @@ export function StudentDialog({ open, onOpenChange, student }: StudentDialogProp
       phone: values.phone || null,
       instagram: values.instagram || null,
       language: values.language,
-      level: values.level,
+      level: values.level || '',
       status: values.status,
       teacher_id: values.teacher_id,
       group_id: values.group_id || null,
@@ -221,7 +221,7 @@ export function StudentDialog({ open, onOpenChange, student }: StudentDialogProp
                       <FormLabel>Język</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value || undefined}>
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger className="text-left">
                             <SelectValue placeholder="Wybierz język" />
                           </SelectTrigger>
                         </FormControl>
@@ -242,11 +242,11 @@ export function StudentDialog({ open, onOpenChange, student }: StudentDialogProp
                   name="level"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Poziom</FormLabel>
+                      <FormLabel>Poziom (opcjonalne)</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value || undefined}>
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Wybierz poziom" />
+                          <SelectTrigger className="text-left">
+                            <SelectValue placeholder="Wybierz poziom (opcjonalne)" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>

@@ -73,16 +73,19 @@ export function MobileNav() {
       </SheetTrigger>
       <SheetContent 
         side="left" 
-        className="app-mobile-nav w-[280px] sm:w-[320px] p-0 border-r border-border/50 bg-background/95 backdrop-blur-xl flex flex-col"
+        className="app-mobile-nav w-[280px] sm:w-[320px] p-0 border-r border-border/50 bg-background/95 backdrop-blur-xl"
         style={{ 
           height: '100vh', 
           maxHeight: '100vh',
           overflow: 'hidden',
-          padding: 0
+          padding: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          WebkitOverflowScrolling: 'touch'
         }}
       >
         {/* Header with gradient */}
-        <div className="flex-shrink-0 flex h-20 items-center justify-between border-b border-border/50 px-6 bg-gradient-to-br from-primary/5 via-background to-background">
+        <div className="flex-shrink-0 flex h-20 items-center justify-between border-b border-border/50 px-6 bg-gradient-to-br from-primary/5 via-background to-background z-10">
           <Link 
             to="/" 
             className="flex items-center gap-3 group" 
@@ -98,15 +101,20 @@ export function MobileNav() {
           </Link>
         </div>
 
-        {/* Navigation with smooth scroll */}
+        {/* Navigation with smooth scroll - iOS optimized */}
         <nav 
-          className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-3 min-h-0"
+          className="flex-1 overflow-y-scroll overflow-x-hidden py-4 px-3"
           style={{ 
             WebkitOverflowScrolling: 'touch',
-            flex: '1 1 0%'
+            WebkitTransform: 'translateZ(0)',
+            flex: '1 1 auto',
+            minHeight: 0,
+            maxHeight: 'calc(100vh - 20rem)',
+            position: 'relative',
+            overscrollBehavior: 'contain'
           }}
         >
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 pb-4">
             {navItems.map((item, index) => {
               const isActive = location.pathname === item.path;
               return (
@@ -156,7 +164,13 @@ export function MobileNav() {
         </nav>
 
         {/* User section with improved design - fixed at bottom */}
-        <div className="flex-shrink-0 border-t border-border/50 bg-background/95 p-4">
+        <div 
+          className="flex-shrink-0 border-t border-border/50 bg-background/95 p-4 z-10"
+          style={{
+            position: 'relative',
+            marginTop: 'auto'
+          }}
+        >
           <div className="flex items-center gap-3 rounded-2xl bg-card/50 p-3.5 backdrop-blur-sm border border-border/50 shadow-sm">
             <Avatar className="h-11 w-11 border-2 border-primary/20 shadow-md flex-shrink-0">
               <AvatarFallback className="bg-gradient-primary text-primary-foreground font-bold text-sm">

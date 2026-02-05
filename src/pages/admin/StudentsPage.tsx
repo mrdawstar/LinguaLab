@@ -166,7 +166,7 @@ export default function StudentsPage() {
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                      {student.language} {student.level}
+                      {student.language}{student.level ? ` ${student.level}` : ''}
                     </span>
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                       student.status === 'active' 
@@ -223,9 +223,11 @@ export default function StudentsPage() {
                       </TableCell>
                       <TableCell>
                         <span className="font-medium">{student.language}</span>
-                        <span className="ml-2 rounded bg-muted px-2 py-0.5 text-xs">
-                          {student.level}
-                        </span>
+                        {student.level && (
+                          <span className="ml-2 rounded bg-muted px-2 py-0.5 text-xs">
+                            {student.level}
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell>{getTeacherName(student.teacher_id)}</TableCell>
                       <TableCell className="max-w-[150px] truncate">

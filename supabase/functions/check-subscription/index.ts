@@ -121,8 +121,8 @@ serve(async (req) => {
     // Sprawdź czy szkoła jest nowa (utworzona w ciągu ostatnich 7 dni) i nie ma aktywnej subskrypcji
     // Użyj created_at z już pobranego obiektu school (BŁĄD #1 - naprawiony)
     const schoolCreatedAt = school.created_at ? new Date(school.created_at) : null;
-    const daysSinceCreation = schoolCreatedAt ? Math.ceil((now.getTime() - schoolCreatedAt.getTime()) / (1000 * 60 * 60 * 24)) : null;
-    const isNewSchool = schoolCreatedAt && daysSinceCreation !== null && daysSinceCreation <= 7;
+    // Poprawione: sprawdź czy szkoła jest nowa - jeśli created_at + 7 dni jest w przyszłości, to jest nowa szkoła
+    const isNewSchool = schoolCreatedAt ? (new Date(schoolCreatedAt.getTime() + 7 * 24 * 60 * 60 * 1000) > now) : false;
     
     // Określ trial_ends_at - użyj z bazy lub oblicz na podstawie created_at
     let trialEndsAt: Date | null = null;
@@ -134,8 +134,11 @@ serve(async (req) => {
       }
     } else if (isNewSchool && schoolCreatedAt && school.subscription_status !== 'active') {
       // Jeśli nie ma trial_ends_at ale szkoła jest nowa i nie ma aktywnej subskrypcji, oblicz jako created_at + 7 dni
+      // Poprawione: dokładnie 7 dni od rejestracji (włącznie z dniem rejestracji)
       trialEndsAt = new Date(schoolCreatedAt);
       trialEndsAt.setDate(trialEndsAt.getDate() + 7);
+      // Ustaw godzinę na koniec dnia (23:59:59) aby mieć pełne 7 dni
+      trialEndsAt.setHours(23, 59, 59, 999);
     }
     
     // Use database as source of truth (updated by webhooks)
@@ -153,7 +156,8 @@ serve(async (req) => {
     // Jeśli użytkownik ma aktywną subskrypcję (subscription_status === 'active' i subscription_plan jest ustawiony), trial jest zakończony
     const trialActive = (trialEndsAt ? now < trialEndsAt : false) && 
                         !(isSubscriptionActive && school.subscription_plan);
-    const trialDaysLeft = trialActive && trialEndsAt ? Math.max(0, Math.ceil((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))) : 0;
+    // Poprawione: użyj Math.floor zamiast Math.ceil dla dokładniejszego obliczenia dni
+    const trialDaysLeft = trialActive && trialEndsAt ? Math.max(0, Math.floor((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))) : 0;
     
     const subscriptionPlan = school.subscription_plan;
     const subscriptionEnd = school.subscription_ends_at;

@@ -180,7 +180,9 @@ export function TeacherDetailsSheet({
                       </div>
                       <div className="flex-1 truncate">
                         <p className="text-sm font-medium">{student.name}</p>
-                        <p className="text-xs text-muted-foreground">{student.language} • {student.level}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {student.language}{student.level ? ` • ${student.level}` : ''}
+                        </p>
                       </div>
                     </div>
                   ))}

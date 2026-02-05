@@ -13,6 +13,7 @@ type Body = {
   lesson_id: string;
   student_id: string; // MUSI BYĆ students.id
   attended: boolean;
+  attendance_id?: string | null; // Opcjonalne - jeśli podane, użyj tego zamiast szukać w bazie
 };
 
 serve(async (req) => {
@@ -69,7 +70,7 @@ serve(async (req) => {
        BODY
        ========================= */
 
-    const { lesson_id, student_id, attended } =
+    const { lesson_id, student_id, attended, attendance_id } =
       (await req.json()) as Body;
 
     if (!lesson_id || !student_id || typeof attended !== "boolean") {
@@ -125,14 +126,31 @@ serve(async (req) => {
        ATTENDANCE
        ========================= */
 
-    const { data: attendance } = await supabase
-      .from("lesson_attendance")
-      .select("id, package_purchase_id")
-      .eq("lesson_id", lesson_id)
-      .eq("student_id", student_id)
-      .maybeSingle();
+    // Jeśli attendance_id jest podane, użyj go; w przeciwnym razie znajdź w bazie
+    let attendanceId: string | null = attendance_id || null;
+    let existingPackageId: string | null = null;
+    
+    if (attendanceId) {
+      // Jeśli mamy attendance_id, pobierz dane o pakiecie z tego rekordu
+      const { data: attendance } = await supabase
+        .from("lesson_attendance")
+        .select("id, package_purchase_id")
+        .eq("id", attendanceId)
+        .maybeSingle();
+      
+      existingPackageId = attendance?.package_purchase_id || null;
+    } else {
+      // Jeśli nie mamy attendance_id, znajdź rekord w bazie
+      const { data: attendance } = await supabase
+        .from("lesson_attendance")
+        .select("id, package_purchase_id")
+        .eq("lesson_id", lesson_id)
+        .eq("student_id", student_id)
+        .maybeSingle();
 
-    let attendanceId = attendance?.id ?? null;
+      attendanceId = attendance?.id ?? null;
+      existingPackageId = attendance?.package_purchase_id || null;
+    }
 
     const toNumber = (value: unknown) => {
       const num = typeof value === "number" ? value : Number(value);
@@ -167,11 +185,11 @@ serve(async (req) => {
           { status: 200, headers: corsHeaders }
         );
       }
-      if (attendance?.package_purchase_id) {
+      if (existingPackageId) {
         const { data: pkg } = await supabase
           .from("package_purchases")
           .select("id, lessons_used, lessons_total, hours_purchased")
-          .eq("id", attendance.package_purchase_id)
+          .eq("id", existingPackageId)
           .single();
 
         if (pkg?.id) {
@@ -207,7 +225,9 @@ serve(async (req) => {
        MARK ATTENDED
        ========================= */
 
-    if (!attendanceId) {
+    // Jeśli nie mamy attendanceId i zaznaczamy obecność, utwórz rekord
+    // UWAGA: Jeśli attendance_id było podane w żądaniu, rekord już istnieje (został utworzony przez trigger lub wcześniej)
+    if (!attendanceId && attended) {
       const { data: inserted } = await supabase
         .from("lesson_attendance")
         .insert({

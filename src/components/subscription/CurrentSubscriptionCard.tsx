@@ -8,11 +8,15 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 export function CurrentSubscriptionCard() {
   const { subscription, isLoading: contextIsLoading, refreshSubscription } = useSubscriptionContext();
   const { syncSubscription } = useSubscription();
   const { subscription_plan, subscription_end, subscription_period_start, trial_active, trial_ends_at, subscribed } = subscription;
+  const { schoolId } = useAuth();
   const isLoading = contextIsLoading;
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -137,13 +141,32 @@ export function CurrentSubscriptionCard() {
     return 'bg-emerald-500';
   };
 
+  // Pobierz created_at szkoły dla dokładnego obliczenia progress bara trial
+  const { data: schoolCreatedAt } = useQuery({
+    queryKey: ['school-created-at', schoolId],
+    queryFn: async () => {
+      if (!schoolId) return null;
+      const { data } = await supabase
+        .from('schools')
+        .select('created_at')
+        .eq('id', schoolId)
+        .single();
+      return data?.created_at ? new Date(data.created_at) : null;
+    },
+    enabled: !!schoolId && status === 'trial',
+  });
+
   const getProgressPercent = () => {
     // Dla okresu próbnego - oblicz ile zostało z 7 dni
     if (status === 'trial') {
       if (expiresAt) {
-        const trialStart = new Date(expiresAt);
-        trialStart.setDate(trialStart.getDate() - 7);
-        const totalDays = differenceInDays(new Date(expiresAt), trialStart);
+        // Użyj created_at szkoły jeśli dostępne, w przeciwnym razie oblicz z trial_ends_at - 7 dni
+        const trialStart = schoolCreatedAt || (() => {
+          const start = new Date(expiresAt);
+          start.setDate(start.getDate() - 7);
+          return start;
+        })();
+        const totalDays = 7; // Dokładnie 7 dni
         const remainingDays = differenceInDays(new Date(expiresAt), new Date());
         if (totalDays <= 0) return 0;
         return Math.max(0, Math.min(100, (remainingDays / totalDays) * 100));
@@ -321,9 +344,13 @@ export function CurrentSubscriptionCard() {
           <div className="flex flex-col gap-1 text-[10px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:text-xs">
             {status === 'trial' ? (
               <>
-                <span className="text-center sm:text-left">Początek okresu próbnego</span>
+                <span className="text-center sm:text-left">
+                  {schoolCreatedAt ? format(schoolCreatedAt, 'd MMM yyyy', { locale: pl }) : 'Początek okresu próbnego'}
+                </span>
                 <span className="text-center font-semibold text-emerald-600 dark:text-emerald-400">{getProgressPercent().toFixed(0)}% pozostało</span>
-                <span className="text-center sm:text-right">Koniec okresu próbnego</span>
+                <span className="text-center sm:text-right">
+                  {expiresAt ? format(expiresAt, 'd MMM yyyy', { locale: pl }) : 'Koniec okresu próbnego'}
+                </span>
               </>
             ) : subscription_period_start ? (
               <>

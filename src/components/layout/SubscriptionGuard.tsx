@@ -25,9 +25,16 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
     trial_active,
     trial_days_left,
     subscribed,
+    isLoading: subscriptionIsLoading,
   } = subscription;
   
-  const isLoading = contextIsLoading;
+  // isLoading tylko jeśli:
+  // 1. AuthContext się ładuje LUB
+  // 2. Użytkownik jest zalogowany ale brak schoolId LUB
+  // 3. Context się ładuje (contextIsLoading === true) LUB
+  // 4. Subscription się jeszcze ładuje (subscriptionIsLoading === true)
+  // NIE pokazuj loading jeśli mamy już zainicjalizowane dane - nawet jeśli są stare, użyj ich
+  const isLoading = authIsLoading || (user && !schoolId) || contextIsLoading || subscriptionIsLoading;
 
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
 
@@ -49,10 +56,10 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
 
   // ⏳ Loading - pokaż ekran ładowania TYLKO jeśli:
   // 1. AuthContext jeszcze się ładuje LUB
-  // 2. Użytkownik jest zalogowany ALE brak schoolId (query nie jest jeszcze włączone) LUB
-  // 3. SubscriptionContext jeszcze się ładuje (isLoading === true) - tylko przy pierwszym załadowaniu
-  // Po pierwszym załadowaniu, isLoading będzie false nawet jeśli React Query wykonuje refetch w tle
-  if (authIsLoading || (user && !schoolId) || isLoading) {
+  // 2. Użytkownik jest zalogowany ALE brak schoolId LUB
+  // 3. SubscriptionContext się ładuje I nie mamy jeszcze żadnych danych
+  // Jeśli mamy dane w cache (nawet stare), użyj ich natychmiast - nie pokazuj loading
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
@@ -64,7 +71,10 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
   }
 
   // 🚫 Brak dostępu - pokaż pełne porównanie planów
-  if (!access_allowed) {
+  // TYLKO jeśli dane są już załadowane (nie pokazuj tego podczas ładowania)
+  // Jeśli contextIsLoading jest true, to znaczy że dane się jeszcze ładują - nie pokazuj ekranu braku dostępu
+  // Jeśli subscriptionIsLoading jest true, to też znaczy że dane się jeszcze ładują
+  if (!contextIsLoading && !subscriptionIsLoading && !access_allowed) {
     return <ExpiredSubscriptionScreen 
       isAdmin={isAdmin} 
       createCheckout={createCheckout}
