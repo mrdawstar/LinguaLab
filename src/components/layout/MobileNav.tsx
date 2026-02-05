@@ -73,7 +73,7 @@ export function MobileNav() {
       </SheetTrigger>
       <SheetContent 
         side="left" 
-        className="app-mobile-nav w-[280px] sm:w-[320px] p-0 border-r border-border/50 bg-background/95 backdrop-blur-xl"
+        className="app-mobile-nav w-[280px] sm:w-[320px] p-0 border-r border-border/50 bg-background"
         style={{ 
           height: '100vh', 
           maxHeight: '100vh',
@@ -82,11 +82,13 @@ export function MobileNav() {
           display: 'flex',
           flexDirection: 'column',
           WebkitOverflowScrolling: 'touch',
-          position: 'relative'
+          position: 'fixed',
+          zIndex: 51,
+          backgroundColor: 'hsl(var(--background))'
         }}
       >
         {/* Header with gradient */}
-        <div className="flex-shrink-0 flex h-20 items-center justify-between border-b border-border/50 px-6 bg-gradient-to-br from-primary/5 via-background to-background z-10">
+        <div className="flex-shrink-0 flex h-20 items-center justify-between border-b border-border/50 px-6 bg-background z-10">
           <Link 
             to="/" 
             className="flex items-center gap-3 group" 
@@ -126,11 +128,13 @@ export function MobileNav() {
                   onClick={() => setOpen(false)}
                   className={cn(
                     'group relative flex items-center gap-3 rounded-xl px-4 py-3.5 text-sm font-medium transition-all duration-200',
-                    'hover:scale-[1.02] active:scale-[0.98]',
+                    'hover:scale-[1.02] active:scale-[0.98] touch-manipulation',
+                    'cursor-pointer select-none',
                     isActive 
                       ? 'bg-gradient-to-r from-primary to-primary/90 text-primary-foreground shadow-lg shadow-primary/20' 
-                      : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground'
+                      : 'text-foreground hover:bg-muted/80'
                   )}
+                  style={{ WebkitTapHighlightColor: 'transparent' }}
                 >
                   {/* Active indicator */}
                   {isActive && (
@@ -148,7 +152,7 @@ export function MobileNav() {
                       'h-5 w-5 transition-all duration-200',
                       isActive 
                         ? 'text-primary-foreground scale-110' 
-                        : 'text-muted-foreground group-hover:text-primary group-hover:scale-110'
+                        : 'text-foreground/70 group-hover:text-primary group-hover:scale-110'
                     )} />
                   </div>
                   
@@ -167,14 +171,12 @@ export function MobileNav() {
 
         {/* User section with improved design - fixed at bottom */}
         <div 
-          className="flex-shrink-0 border-t border-border/50 bg-background/95 p-4 z-20"
+          className="flex-shrink-0 border-t border-border/50 bg-background p-4 z-20"
           style={{
             position: 'sticky',
             bottom: 0,
             marginTop: 'auto',
-            backgroundColor: 'hsl(var(--background) / 0.95)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)'
+            backgroundColor: 'hsl(var(--background))'
           }}
         >
           <div className="flex items-center gap-3 rounded-2xl bg-card/50 p-3.5 backdrop-blur-sm border border-border/50 shadow-sm">
@@ -200,8 +202,9 @@ export function MobileNav() {
                 logout();
                 setOpen(false);
               }}
-              className="h-9 w-9 flex-shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all duration-200 hover:scale-110 rounded-lg"
+              className="h-9 w-9 flex-shrink-0 text-foreground/70 hover:bg-destructive/10 hover:text-destructive transition-all duration-200 hover:scale-110 rounded-lg touch-manipulation"
               title="Wyloguj"
+              style={{ WebkitTapHighlightColor: 'transparent' }}
             >
               <LogOut className="h-4 w-4" />
             </Button>
