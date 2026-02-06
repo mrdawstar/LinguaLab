@@ -58,8 +58,8 @@ Email powinien zostać wysłany przez Resend do podanego adresu email.
 
 ## Uwagi
 
-- **Adres nadawcy**: Obecnie używany jest `onboarding@resend.dev` (domyślny adres Resend)
-- **Weryfikacja domeny**: Aby używać własnej domeny jako nadawcy, musisz zweryfikować domenę w Resend Dashboard
+- **Adres nadawcy**: Używany jest `LinguaLab <noreply@lingualab.cloud>` (zweryfikowana domena lingualab.cloud)
+- **Weryfikacja domeny**: Domena `lingualab.cloud` jest zweryfikowana w Resend Dashboard
 - **Limity**: Resend ma limit 100 emaili/dzień w planie darmowym
 
 ## Troubleshooting

@@ -4,6 +4,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 
+// Centralna konfiguracja adresu nadawcy - używa zweryfikowanej domeny lingualab.cloud
+const EMAIL_FROM = "LinguaLab <noreply@lingualab.cloud>";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -217,7 +220,7 @@ const handler = async (req: Request): Promise<Response> => {
             Authorization: `Bearer ${RESEND_API_KEY}`,
           },
           body: JSON.stringify({
-            from: `${schoolName} <onboarding@resend.dev>`,
+            from: EMAIL_FROM,
             to: [student.email],
             subject: subject,
             html: htmlContent,
