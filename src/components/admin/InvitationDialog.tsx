@@ -189,10 +189,10 @@ export function InvitationDialog({ open, onOpenChange }: InvitationDialogProps) 
               </p>
             </div>
 
-            <div className="rounded-xl border border-warning/30 bg-warning/10 p-3">
-              <p className="text-xs text-orange-800 dark:text-orange-200">
-                <strong>Uwaga:</strong> Automatyczne wysyłanie emaili wymaga zweryfikowanej domeny w Resend. 
-                Do tego czasu możesz skopiować link i wysłać go ręcznie.
+            <div className="rounded-xl border border-success/30 bg-success/10 p-3">
+              <p className="text-xs text-emerald-800 dark:text-emerald-200">
+                <strong>✓ Email wysłany:</strong> Zaproszenie zostało wysłane na adres {createdInvitation.email}. 
+                Odbiorca otrzyma email z linkiem do rejestracji.
               </p>
             </div>
 

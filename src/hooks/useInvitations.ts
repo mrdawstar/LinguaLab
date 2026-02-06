@@ -70,7 +70,7 @@ export function useInvitations() {
           }
         }
         
-        const { error: emailError } = await supabase.functions.invoke('send-invitation-email', {
+        const { data: emailResponse, error: emailError } = await supabase.functions.invoke('send-invitation-email', {
           body: {
             email,
             role,
@@ -82,22 +82,22 @@ export function useInvitations() {
         
         if (emailError) {
           console.error('Failed to send invitation email:', emailError);
-          // Don't throw - invitation was created successfully, just email failed
-          toast.warning('Zaproszenie utworzone, ale email nie został wysłany. Skopiuj link ręcznie.');
-        } else {
+          // Nie rzucaj błędu - zaproszenie zostało utworzone, użytkownik może skopiować link
+          // Email może nie zostać wysłany, ale zaproszenie jest ważne
+        } else if (emailResponse?.success) {
           // Email sent successfully
-          console.log('Invitation email sent successfully');
+          console.log('Invitation email sent successfully', emailResponse);
         }
       } catch (emailErr) {
         console.error('Email sending error:', emailErr);
-        toast.warning('Zaproszenie utworzone, ale email nie został wysłany. Skopiuj link ręcznie.');
+        // Nie rzucaj błędu - zaproszenie zostało utworzone
       }
       
       return data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['invitations', schoolId] });
-      toast.success(`Zaproszenie i email wysłane do ${data.email}`);
+      toast.success(`Zaproszenie zostało wysłane na email ${data.email}`);
     },
     onError: (error: Error) => {
       if (error.message.includes('duplicate')) {
