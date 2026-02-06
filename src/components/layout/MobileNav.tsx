@@ -75,8 +75,9 @@ export function MobileNav() {
         side="left" 
         className="app-mobile-nav w-[280px] sm:w-[320px] p-0 border-r border-border/50 bg-background"
         style={{ 
-          height: '100vh', 
-          maxHeight: '100vh',
+          height: '100dvh', 
+          maxHeight: '100dvh',
+          minHeight: '100dvh',
           overflow: 'hidden',
           padding: 0,
           display: 'flex',
@@ -84,7 +85,9 @@ export function MobileNav() {
           WebkitOverflowScrolling: 'touch',
           position: 'fixed',
           zIndex: 51,
-          backgroundColor: 'hsl(var(--background))'
+          backgroundColor: 'hsl(var(--background))',
+          top: 0,
+          bottom: 0
         }}
       >
         {/* Header with gradient */}
@@ -106,7 +109,7 @@ export function MobileNav() {
 
         {/* Navigation with smooth scroll - iOS optimized */}
         <nav 
-          className="flex-1 overflow-y-scroll overflow-x-hidden py-4 px-3"
+          className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-3"
           style={{ 
             WebkitOverflowScrolling: 'touch',
             WebkitTransform: 'translateZ(0)',
@@ -115,7 +118,7 @@ export function MobileNav() {
             maxHeight: 'none',
             position: 'relative',
             overscrollBehavior: 'contain',
-            paddingBottom: '1rem'
+            paddingBottom: '2rem'
           }}
         >
           <div className="space-y-1.5 pb-8">
@@ -171,12 +174,14 @@ export function MobileNav() {
 
         {/* User section with improved design - fixed at bottom */}
         <div 
-          className="flex-shrink-0 border-t border-border/50 bg-background p-4 z-20"
+          className="flex-shrink-0 border-t border-border/50 bg-background p-4 z-30"
           style={{
-            position: 'sticky',
+            position: 'absolute',
             bottom: 0,
-            marginTop: 'auto',
-            backgroundColor: 'hsl(var(--background))'
+            left: 0,
+            right: 0,
+            backgroundColor: 'hsl(var(--background))',
+            width: '100%'
           }}
         >
           <div className="flex items-center gap-3 rounded-2xl bg-card/50 p-3.5 backdrop-blur-sm border border-border/50 shadow-sm">

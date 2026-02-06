@@ -258,14 +258,14 @@
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--border)) transparent;
     flex: 1 1 auto;
-    overflow-y: scroll;
+    overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     -webkit-transform: translateZ(0);
     min-height: 0;
-    max-height: calc(100vh - 12rem); /* Zostaw miejsce na header (5rem) i user section (7rem) */
     overscroll-behavior: contain;
     position: relative;
+    padding-bottom: 8rem; /* Zostaw miejsce na sekcję użytkownika */
   }
 
   .app-mobile-nav nav::-webkit-scrollbar {
@@ -290,13 +290,22 @@
   /* Ensure user section stays at bottom on iOS and is always visible */
   .app-mobile-nav > div:last-child {
     flex-shrink: 0;
-    position: sticky;
+    position: absolute;
     bottom: 0;
-    z-index: 20;
-    margin-top: auto;
-    background-color: hsl(var(--background) / 0.95);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    left: 0;
+    right: 0;
+    z-index: 30;
+    background-color: hsl(var(--background));
+    width: 100%;
+    box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Ensure SheetContent has proper height */
+  .app-mobile-nav {
+    position: relative;
+    height: 100dvh;
+    max-height: 100dvh;
+    min-height: 100dvh;
   }
 
 
