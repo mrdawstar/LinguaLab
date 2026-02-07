@@ -43,9 +43,10 @@ export function useSubscription() {
     }
 
     const now = new Date();
+    const schoolData = school as any;
     
     // Sprawdź czy szkoła jest nowa (utworzona w ciągu ostatnich 7 dni) i nie ma aktywnej subskrypcji
-    const schoolCreatedAt = school.created_at ? new Date(school.created_at) : null;
+    const schoolCreatedAt = schoolData.created_at ? new Date(schoolData.created_at) : null;
     // Poprawione: użyj Math.floor zamiast Math.ceil dla dokładniejszego obliczenia dni
     // Sprawdź czy szkoła jest nowa - jeśli created_at + 7 dni jest w przyszłości, to jest nowa szkoła
     const isNewSchool = schoolCreatedAt ? (new Date(schoolCreatedAt.getTime() + 7 * 24 * 60 * 60 * 1000) > now) : false;
@@ -53,13 +54,13 @@ export function useSubscription() {
     // Określ trial_ends_at - użyj z bazy lub oblicz na podstawie created_at
     // BŁĄD #10 - sprawdź czy trial_ends_at nie jest w przeszłości
     let trialEndsAt: Date | null = null;
-    if (school.trial_ends_at) {
-      trialEndsAt = new Date(school.trial_ends_at);
+    if (schoolData.trial_ends_at) {
+      trialEndsAt = new Date(schoolData.trial_ends_at);
       // Jeśli trial_ends_at jest w przeszłości, ustaw na null
       if (trialEndsAt < now) {
         trialEndsAt = null;
       }
-    } else if (isNewSchool && schoolCreatedAt && school.subscription_status !== 'active') {
+    } else if (isNewSchool && schoolCreatedAt && schoolData.subscription_status !== 'active') {
       // Jeśli nie ma trial_ends_at ale szkoła jest nowa i nie ma aktywnej subskrypcji, oblicz jako created_at + 7 dni
       // Poprawione: dokładnie 7 dni od rejestracji (włącznie z dniem rejestracji)
       trialEndsAt = new Date(schoolCreatedAt);
@@ -68,31 +69,31 @@ export function useSubscription() {
       trialEndsAt.setHours(23, 59, 59, 999);
     }
     
-    const subscribed = school.subscription_status === 'active';
+    const subscribed = schoolData.subscription_status === 'active';
     
-    // BŁĄD #10 - trialActive tylko jeśli trial_ends_at jest w przyszłości I NIE MA aktywnej subskrypcji
-    // Jeśli użytkownik ma aktywną subskrypcję (subscribed i subscription_plan jest ustawiony), trial jest zakończony
-    const trialActive = (trialEndsAt ? now < trialEndsAt : false) && 
-                        !(subscribed && school.subscription_plan);
-    // Poprawione: użyj Math.floor zamiast Math.ceil dla dokładniejszego obliczenia dni
-    // Jeśli trial kończy się za 6.5 dnia, pokaż 6 dni (nie 7)
+    // Trial NIGDY nie może być aktywny, jeśli subskrypcja jest active
+    const trialActive = !subscribed && !!trialEndsAt && now < trialEndsAt;
+    // Oblicz trial_days_left używając Math.ceil - zaokrąglij w górę aby pokazać pełne dni
+    // trial_ends_at jest ustawiony na koniec dnia 7 (23:59:59.999)
+    // W dniu rejestracji (np. 10:00) różnica to ~6.5 dnia, ceil daje 7 dni ✅
+    // Po pełnej dobie (np. dzień 2 o 10:00) różnica to ~5.5 dnia, ceil daje 6 dni ✅
     const trialDaysLeft = trialActive && trialEndsAt
       ? Math.max(
           0,
-          Math.floor((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+          Math.min(7, Math.ceil((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
         )
       : 0;
 
     const accessAllowed = subscribed || trialActive;
-
+    
     return {
       subscribed,
-      subscription_plan: school.subscription_plan || null,
-      subscription_end: school.subscription_ends_at || null,
-      subscription_period_start: school.subscription_period_start || null,
+      subscription_plan: schoolData.subscription_plan || null,
+      subscription_end: schoolData.subscription_ends_at || null,
+      subscription_period_start: schoolData.subscription_period_start || null,
       trial_active: trialActive,
       trial_days_left: trialDaysLeft,
-      trial_ends_at: trialEndsAt ? trialEndsAt.toISOString() : (school.trial_ends_at || null),
+      trial_ends_at: trialEndsAt ? trialEndsAt.toISOString() : (schoolData.trial_ends_at || null),
       access_allowed: accessAllowed,
       isLoading: false,
       error: null,
@@ -106,6 +107,7 @@ export function useSubscription() {
         subscribed: false,
         subscription_plan: null,
         subscription_end: null,
+        subscription_period_start: null,
         trial_active: false,
         trial_days_left: 0,
         trial_ends_at: null,
@@ -120,6 +122,7 @@ export function useSubscription() {
         subscribed: false,
         subscription_plan: null,
         subscription_end: null,
+        subscription_period_start: null,
         trial_active: false,
         trial_days_left: 0,
         trial_ends_at: null,

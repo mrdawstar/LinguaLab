@@ -265,7 +265,7 @@
     min-height: 0;
     overscroll-behavior: contain;
     position: relative;
-    padding-bottom: 8rem; /* Zostaw miejsce na sekcję użytkownika */
+    padding-bottom: 12rem; /* Zwiększone aby zostawić więcej miejsca na sekcję użytkownika i safe area iOS */
   }
 
   .app-mobile-nav nav::-webkit-scrollbar {
@@ -298,6 +298,7 @@
     background-color: hsl(var(--background));
     width: 100%;
     box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1);
+    padding-bottom: max(1rem, env(safe-area-inset-bottom)); /* Uwzględnij safe area dla iOS */
   }
   
   /* Ensure SheetContent has proper height */
@@ -306,6 +307,7 @@
     height: 100dvh;
     max-height: 100dvh;
     min-height: 100dvh;
+    padding-bottom: env(safe-area-inset-bottom); /* Uwzględnij safe area dla iOS */
   }
 
 

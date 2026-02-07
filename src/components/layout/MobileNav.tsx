@@ -118,10 +118,10 @@ export function MobileNav() {
             maxHeight: 'none',
             position: 'relative',
             overscrollBehavior: 'contain',
-            paddingBottom: '2rem'
+            paddingBottom: '10rem' // Zwiększone aby zostawić więcej miejsca na sekcję użytkownika i safe area
           }}
         >
-          <div className="space-y-1.5 pb-8">
+          <div className="space-y-1.5 pb-12">
             {navItems.map((item, index) => {
               const isActive = location.pathname === item.path;
               return (
@@ -181,7 +181,8 @@ export function MobileNav() {
             left: 0,
             right: 0,
             backgroundColor: 'hsl(var(--background))',
-            width: '100%'
+            width: '100%',
+            paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' // Uwzględnij safe area dla iOS
           }}
         >
           <div className="flex items-center gap-3 rounded-2xl bg-card/50 p-3.5 backdrop-blur-sm border border-border/50 shadow-sm">

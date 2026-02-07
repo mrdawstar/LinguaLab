@@ -55,15 +55,8 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
   // Synchronizuj stan z React Query - użyj cache natychmiast jeśli dostępny
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SubscriptionContext.tsx:53',message:'useEffect triggered',data:{userId:user?.id,schoolId,queryIsLoading,isInitialized,shouldRefresh,hasCachedData:!!queryClient.getQueryData(queryKey)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
-    
     // Jeśli użytkownik nie jest zalogowany, resetuj stan
     if (!user || !schoolId) {
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SubscriptionContext.tsx:58',message:'Resetting state - no user/schoolId',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       setSubscription(DEFAULT_SUBSCRIPTION_STATUS);
       setIsInitialized(false);
       setShouldRefresh(false);
@@ -79,10 +72,6 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     // 3. Albo gdy powinno być odświeżone (shouldRefresh === true)
     // NIE aktualizuj jeśli query się jeszcze wykonuje i nie mamy cache
     if (!queryIsLoading || cachedData !== undefined || shouldRefresh) {
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SubscriptionContext.tsx:75',message:'Updating subscription state',data:{queryIsLoading,hasCachedData:!!cachedData,shouldRefresh,isInitialized},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
-      
       // Jeśli mamy cache, użyj go zamiast wartości z hooka (które mogą być domyślne)
       const dataToUse = cachedData || {
         subscribed: subscribed ?? false,
@@ -119,10 +108,6 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         prevSubscription.access_allowed !== newStatus.access_allowed ||
         prevSubscription.isLoading !== newStatus.isLoading ||
         !isInitialized;
-      
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SubscriptionContext.tsx:110',message:'Checking if state changed',data:{hasChanged,isInitialized,prevAccessAllowed:prevSubscription.access_allowed,newAccessAllowed:newStatus.access_allowed},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
 
       if (hasChanged) {
         prevSubscriptionRef.current = newStatus; // Zaktualizuj ref przed setState
@@ -136,9 +121,6 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       // WAŻNE: Sprawdź czy już nie ustawiliśmy loading state - unikaj niepotrzebnych aktualizacji
       const currentSubscription = prevSubscriptionRef.current;
       if (!isInitialized && !currentSubscription.isLoading) {
-        // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SubscriptionContext.tsx:120',message:'Setting loading state',data:{isInitialized,currentIsLoading:currentSubscription.isLoading},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'E'})}).catch(()=>{});
-        // #endregion
         const loadingStatus = {
           ...DEFAULT_SUBSCRIPTION_STATUS,
           isLoading: true,

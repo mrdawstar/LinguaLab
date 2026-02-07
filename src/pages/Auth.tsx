@@ -65,6 +65,16 @@ const translateError = (errorMessage: string): string => {
     return 'Hasło nie spełnia wymagań';
   }
   
+  // Rate limit errors
+  if (lowerMessage.includes('rate limit') || lowerMessage.includes('too many requests') || lowerMessage.includes('email rate limit exceeded')) {
+    return 'Zbyt wiele prób rejestracji. Poczekaj kilka minut i spróbuj ponownie.';
+  }
+  
+  // 429 status code
+  if (errorMessage.includes('429')) {
+    return 'Zbyt wiele prób rejestracji. Poczekaj kilka minut i spróbuj ponownie.';
+  }
+  
   return errorMessage;
 };
 
@@ -95,6 +105,8 @@ export default function Auth() {
   const [loadingInvitation, setLoadingInvitation] = useState(!!invitationToken);
   const [emailConfirmationRequired, setEmailConfirmationRequired] = useState<string | null>(null);
   const validationTimeoutRef = useRef<Record<string, NodeJS.Timeout>>({});
+  const lastSignupAttemptRef = useRef<number>(0);
+  const signupAttemptCountRef = useRef<number>(0);
   
   const { login, signup, isAuthenticated, role, isLoading: authLoading } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -315,6 +327,32 @@ export default function Auth() {
       return;
     }
     
+    // Zapobiegaj wielokrotnym próbom rejestracji w krótkim czasie
+    const now = Date.now();
+    const timeSinceLastAttempt = now - lastSignupAttemptRef.current;
+    
+    // Jeśli minęło mniej niż 5 sekund od ostatniej próby, zablokuj
+    if (timeSinceLastAttempt < 5000) {
+      toast.error('Proszę poczekać chwilę przed kolejną próbą rejestracji');
+      setIsLoading(false);
+      return;
+    }
+    
+    // Resetuj licznik po 60 sekundach
+    if (timeSinceLastAttempt > 60000) {
+      signupAttemptCountRef.current = 0;
+    }
+    
+    // Jeśli było więcej niż 3 próby w ciągu minuty, zablokuj
+    if (signupAttemptCountRef.current >= 3) {
+      toast.error('Zbyt wiele prób rejestracji. Poczekaj minutę i spróbuj ponownie.');
+      setIsLoading(false);
+      return;
+    }
+    
+    lastSignupAttemptRef.current = now;
+    signupAttemptCountRef.current += 1;
+    
     try {
       // Sign up the user - the database trigger handles role assignment automatically
       const { data: signupData, error: signupError } = await supabase.auth.signUp({
@@ -329,7 +367,14 @@ export default function Auth() {
         },
       });
       
-      if (signupError) throw signupError;
+      if (signupError) {
+        // Resetuj licznik przy sukcesie
+        signupAttemptCountRef.current = 0;
+        throw signupError;
+      }
+      
+      // Resetuj licznik przy sukcesie
+      signupAttemptCountRef.current = 0;
       
       // Check if email confirmation is required
       if (signupData.user && !signupData.session) {
@@ -345,15 +390,32 @@ export default function Auth() {
       navigate('/auth');
     } catch (error: any) {
       console.error('Invitation signup error:', error);
-      const translatedError = translateError(error.message || 'Wystąpił błąd podczas rejestracji');
-      toast.error(translatedError);
       
-      // Set error in form if it's email related
-      if (error.message?.toLowerCase().includes('email') && error.message?.toLowerCase().includes('invalid')) {
-        setErrors({ email: 'Email nie wygląda poprawnie. Sprawdź format adresu email' });
-      } else if (error.message?.includes('User already registered')) {
-        setErrors({ email: 'Użytkownik o tym adresie email już istnieje. Zaloguj się.' });
-        setIsLogin(true);
+      // Sprawdź czy to błąd rate limit (429)
+      const isRateLimit = error.status === 429 || 
+                         error.message?.toLowerCase().includes('rate limit') ||
+                         error.message?.toLowerCase().includes('too many requests') ||
+                         error.message?.toLowerCase().includes('email rate limit exceeded');
+      
+      if (isRateLimit) {
+        const waitTime = Math.min(60, Math.pow(2, signupAttemptCountRef.current) * 5); // Exponential backoff, max 60s
+        toast.error(`Zbyt wiele prób rejestracji. Poczekaj ${waitTime} sekund i spróbuj ponownie.`, {
+          duration: 8000,
+        });
+        setErrors({ 
+          email: `Zbyt wiele prób. Poczekaj ${waitTime} sekund przed kolejną próbą.` 
+        });
+      } else {
+        const translatedError = translateError(error.message || 'Wystąpił błąd podczas rejestracji');
+        toast.error(translatedError);
+        
+        // Set error in form if it's email related
+        if (error.message?.toLowerCase().includes('email') && error.message?.toLowerCase().includes('invalid')) {
+          setErrors({ email: 'Email nie wygląda poprawnie. Sprawdź format adresu email' });
+        } else if (error.message?.includes('User already registered')) {
+          setErrors({ email: 'Użytkownik o tym adresie email już istnieje. Zaloguj się.' });
+          setIsLogin(true);
+        }
       }
     } finally {
       setIsLoading(false);
@@ -453,6 +515,32 @@ export default function Auth() {
           return;
         }
 
+        // Zapobiegaj wielokrotnym próbom rejestracji w krótkim czasie
+        const now = Date.now();
+        const timeSinceLastAttempt = now - lastSignupAttemptRef.current;
+        
+        // Jeśli minęło mniej niż 5 sekund od ostatniej próby, zablokuj
+        if (timeSinceLastAttempt < 5000) {
+          toast.error('Proszę poczekać chwilę przed kolejną próbą rejestracji');
+          setIsLoading(false);
+          return;
+        }
+        
+        // Resetuj licznik po 60 sekundach
+        if (timeSinceLastAttempt > 60000) {
+          signupAttemptCountRef.current = 0;
+        }
+        
+        // Jeśli było więcej niż 3 próby w ciągu minuty, zablokuj
+        if (signupAttemptCountRef.current >= 3) {
+          toast.error('Zbyt wiele prób rejestracji. Poczekaj minutę i spróbuj ponownie.');
+          setIsLoading(false);
+          return;
+        }
+        
+        lastSignupAttemptRef.current = now;
+        signupAttemptCountRef.current += 1;
+
         // Use supabase.auth.signUp directly to check if email confirmation is required
         const { data: signupData, error: signupError } = await supabase.auth.signUp({
           email,
@@ -467,15 +555,34 @@ export default function Auth() {
         });
         
         if (signupError) {
-          const translatedError = translateError(signupError.message);
-          toast.error(translatedError);
-          // Set error in form if it's email related
-          if (signupError.message.toLowerCase().includes('email') && signupError.message.toLowerCase().includes('invalid')) {
-            setErrors({ email: 'Email nie wygląda poprawnie. Sprawdź format adresu email' });
-          } else if (signupError.message.includes('User already registered')) {
-            setErrors({ email: 'Użytkownik o tym adresie email już istnieje' });
+          // Sprawdź czy to błąd rate limit (429)
+          const isRateLimit = signupError.status === 429 || 
+                             signupError.message?.toLowerCase().includes('rate limit') ||
+                             signupError.message?.toLowerCase().includes('too many requests') ||
+                             signupError.message?.toLowerCase().includes('email rate limit exceeded');
+          
+          if (isRateLimit) {
+            const waitTime = Math.min(60, Math.pow(2, signupAttemptCountRef.current) * 5); // Exponential backoff, max 60s
+            toast.error(`Zbyt wiele prób rejestracji. Poczekaj ${waitTime} sekund i spróbuj ponownie.`, {
+              duration: 8000,
+            });
+            setErrors({ 
+              email: `Zbyt wiele prób. Poczekaj ${waitTime} sekund przed kolejną próbą.` 
+            });
+          } else {
+            const translatedError = translateError(signupError.message);
+            toast.error(translatedError);
+            // Set error in form if it's email related
+            if (signupError.message.toLowerCase().includes('email') && signupError.message.toLowerCase().includes('invalid')) {
+              setErrors({ email: 'Email nie wygląda poprawnie. Sprawdź format adresu email' });
+            } else if (signupError.message.includes('User already registered')) {
+              setErrors({ email: 'Użytkownik o tym adresie email już istnieje' });
+            }
           }
         } else {
+          // Resetuj licznik przy sukcesie
+          signupAttemptCountRef.current = 0;
+          
           // Check if email confirmation is required
           if (signupData.user && !signupData.session) {
             // User needs to confirm email

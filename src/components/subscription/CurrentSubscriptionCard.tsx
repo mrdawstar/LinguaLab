@@ -15,7 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 export function CurrentSubscriptionCard() {
   const { subscription, isLoading: contextIsLoading, refreshSubscription } = useSubscriptionContext();
   const { syncSubscription } = useSubscription();
-  const { subscription_plan, subscription_end, subscription_period_start, trial_active, trial_ends_at, subscribed } = subscription;
+  const { subscription_plan, subscription_end, subscription_period_start, trial_active, trial_ends_at, trial_days_left, subscribed } = subscription;
   const { schoolId } = useAuth();
   const isLoading = contextIsLoading;
   const [isSyncing, setIsSyncing] = useState(false);
@@ -71,7 +71,7 @@ export function CurrentSubscriptionCard() {
     statusLabel = 'Okres próbny (7 dni)';
     statusIcon = Clock;
     statusColor = 'text-blue-600 dark:text-blue-400';
-    // BŁĄD #7 - poprawiono: walidacja trial_ends_at
+    // Użyj trial_days_left z subscription - już obliczone poprawnie z Math.ceil
     if (trial_ends_at) {
       expiresAt = new Date(trial_ends_at);
       const now = new Date();
@@ -81,7 +81,8 @@ export function CurrentSubscriptionCard() {
         expiresAt = null;
         daysLeft = 0;
       } else {
-        daysLeft = Math.max(0, differenceInDays(expiresAt, now));
+        // Użyj trial_days_left z subscription (już obliczone z Math.ceil i ograniczone do 7)
+        daysLeft = trial_days_left ?? 0;
       }
     } else {
       // Fallback: jeśli nie ma trial_ends_at, nie pokazuj trial (może być wygasły)
@@ -157,23 +158,14 @@ export function CurrentSubscriptionCard() {
   });
 
   const getProgressPercent = () => {
-    // Dla okresu próbnego - oblicz ile zostało z 7 dni
+    // Dla okresu próbnego - użyj trial_days_left z subscription
     if (status === 'trial') {
-      if (expiresAt) {
-        // Użyj created_at szkoły jeśli dostępne, w przeciwnym razie oblicz z trial_ends_at - 7 dni
-        const trialStart = schoolCreatedAt || (() => {
-          const start = new Date(expiresAt);
-          start.setDate(start.getDate() - 7);
-          return start;
-        })();
-        const totalDays = 7; // Dokładnie 7 dni
-        const remainingDays = differenceInDays(new Date(expiresAt), new Date());
-        if (totalDays <= 0) return 0;
-        return Math.max(0, Math.min(100, (remainingDays / totalDays) * 100));
-      } else {
-        // Fallback: jeśli nie ma expiresAt, załóż że zostało 7 dni
-        return 100;
-      }
+      // Użyj trial_days_left zamiast obliczać na nowo - już poprawnie obliczone z Math.ceil
+      // W dniu rejestracji pokazuje 7 dni, więc progress = 7/7 = 100%
+      const remainingDays = daysLeft ?? 0;
+      const totalDays = 7; // Dokładnie 7 dni
+      if (totalDays <= 0) return 0;
+      return Math.max(0, Math.min(100, (remainingDays / totalDays) * 100));
     }
     
     if (!expiresAt) return 0;

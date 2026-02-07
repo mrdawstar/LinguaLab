@@ -121,6 +121,11 @@ serve(async (req) => {
     // Sprawdź czy szkoła jest nowa (utworzona w ciągu ostatnich 7 dni) i nie ma aktywnej subskrypcji
     // Użyj created_at z już pobranego obiektu school (BŁĄD #1 - naprawiony)
     const schoolCreatedAt = school.created_at ? new Date(school.created_at) : null;
+
+    const daysSinceCreation = schoolCreatedAt
+  ? Math.floor((now.getTime() - schoolCreatedAt.getTime()) / (1000 * 60 * 60 * 24))
+  : null;
+
     // Poprawione: sprawdź czy szkoła jest nowa - jeśli created_at + 7 dni jest w przyszłości, to jest nowa szkoła
     const isNewSchool = schoolCreatedAt ? (new Date(schoolCreatedAt.getTime() + 7 * 24 * 60 * 60 * 1000) > now) : false;
     
@@ -141,23 +146,21 @@ serve(async (req) => {
       trialEndsAt.setHours(23, 59, 59, 999);
     }
     
-    // Use database as source of truth (updated by webhooks)
-    // BŁĄD #9 - sprawdź czy subscription_status jest poprawny
-    const isValidSubscriptionStatus = school.subscription_status === "active" || 
-                                      school.subscription_status === "trial" ||
-                                      school.subscription_status === "expired" ||
-                                      school.subscription_status === null;
     
-    // Check if subscription is active (active status) and not expired
-    const isSubscriptionActive = school.subscription_status === "active" &&
-      (school.subscription_ends_at ? new Date(school.subscription_ends_at) > now : true);
+    // Źródłem prawdy jest schools.subscription_status
+    // Rola użytkownika NIE MA WPŁYWU na logikę wygaśnięcia
+    const subscribed = school.subscription_status === 'active';
     
-    // BŁĄD #10 - trialActive tylko jeśli trial_ends_at jest w przyszłości I NIE MA aktywnej subskrypcji
-    // Jeśli użytkownik ma aktywną subskrypcję (subscription_status === 'active' i subscription_plan jest ustawiony), trial jest zakończony
-    const trialActive = (trialEndsAt ? now < trialEndsAt : false) && 
-                        !(isSubscriptionActive && school.subscription_plan);
-    // Poprawione: użyj Math.floor zamiast Math.ceil dla dokładniejszego obliczenia dni
-    const trialDaysLeft = trialActive && trialEndsAt ? Math.max(0, Math.floor((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))) : 0;
+    // Trial NIGDY nie może być aktywny, jeśli subskrypcja jest active
+    const trialActive = !subscribed && !!trialEndsAt && now < trialEndsAt;
+    
+    // Oblicz trial_days_left używając Math.ceil - zaokrąglij w górę aby pokazać pełne dni
+    // trial_ends_at jest ustawiony na koniec dnia 7 (23:59:59.999)
+    // W dniu rejestracji (np. 10:00) różnica to ~6.5 dnia, ceil daje 7 dni ✅
+    // Po pełnej dobie (np. dzień 2 o 10:00) różnica to ~5.5 dnia, ceil daje 6 dni ✅
+    const trialDaysLeft = trialActive && trialEndsAt 
+      ? Math.max(0, Math.min(7, Math.ceil((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))))
+      : 0;
     
     const subscriptionPlan = school.subscription_plan;
     const subscriptionEnd = school.subscription_ends_at;
@@ -168,7 +171,7 @@ serve(async (req) => {
       plan: subscriptionPlan,
       endsAt: subscriptionEnd,
       periodStart: subscriptionPeriodStart,
-      isActive: isSubscriptionActive,
+      subscribed,
       trialActive,
       trialEndsAt: trialEndsAt?.toISOString(),
       daysSinceCreation,
@@ -177,11 +180,11 @@ serve(async (req) => {
       schoolCreatedAt: school.created_at,
     });
 
-    // Dostęp dozwolony jeśli: aktywna subskrypcja LUB aktywny trial
-    const accessAllowed = isSubscriptionActive || trialActive;
+    // access_allowed MUSI BYĆ GLOBALNE - admin / manager / teacher → ten sam moment blokady
+    const accessAllowed = subscribed || trialActive;
 
     return new Response(JSON.stringify({
-      subscribed: isSubscriptionActive,
+      subscribed,
       subscription_plan: subscriptionPlan,
       subscription_end: subscriptionEnd,
       subscription_period_start: subscriptionPeriodStart,
