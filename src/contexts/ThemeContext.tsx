@@ -54,7 +54,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
           .eq('user_id', user.id)
           .maybeSingle();
 
-        if (error) throw error;
+        if (error) {
+          // Ignore AbortError - it's usually caused by component unmounting or navigation
+          if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+            setIsLoading(false);
+            return;
+          }
+          throw error;
+        }
 
         if (data?.theme) {
           // Użytkownik ma zapisany motyw w bazie - użyj go
@@ -68,7 +75,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
           // Usuń z localStorage jeśli był tam zapisany inny motyw (np. z preferencji systemowych)
           localStorage.removeItem('theme');
         }
-      } catch (error) {
+      } catch (error: any) {
+        // Ignore AbortError - it's usually caused by component unmounting or navigation
+        if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
+          setIsLoading(false);
+          return;
+        }
         console.error('Error loading theme from database:', error);
         // W przypadku błędu: domyślnie tryb jasny
         setTheme('light');

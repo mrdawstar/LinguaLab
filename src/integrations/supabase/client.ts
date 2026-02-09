@@ -40,12 +40,21 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   },
 });
 
-// Global error handler for refresh token errors
+// Global error handler for refresh token errors and AbortErrors
 // This catches errors that occur during automatic token refresh
 if (typeof window !== 'undefined') {
   // Listen for unhandled promise rejections (refresh token errors)
   window.addEventListener('unhandledrejection', (event) => {
     const error = event.reason;
+    
+    // Ignore AbortError - it's usually caused by component unmounting or navigation
+    // These are expected and don't need to be logged or handled
+    if (error?.name === 'AbortError' || error?.message?.includes('aborted') || error?.message?.includes('signal is aborted')) {
+      // Silently ignore AbortErrors - they're expected during navigation/unmounting
+      event.preventDefault();
+      return;
+    }
+    
     if (error?.message?.includes('Refresh Token') || 
         error?.message?.includes('Invalid Refresh Token') ||
         error?.message?.includes('refresh_token_not_found') ||

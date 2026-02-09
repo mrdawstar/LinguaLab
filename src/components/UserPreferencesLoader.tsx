@@ -71,6 +71,10 @@ export function UserPreferencesLoader({ children }: { children: React.ReactNode 
           .maybeSingle();
 
         if (error) {
+          // Ignore AbortError - it's usually caused by component unmounting or navigation
+          if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+            return;
+          }
           console.error('Error loading preferences:', error);
           return;
         }
@@ -78,7 +82,11 @@ export function UserPreferencesLoader({ children }: { children: React.ReactNode 
         if (data) {
           applyColors(data);
         }
-      } catch (error) {
+      } catch (error: any) {
+        // Ignore AbortError - it's usually caused by component unmounting or navigation
+        if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
+          return;
+        }
         console.error('Error loading preferences:', error);
       }
     }

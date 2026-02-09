@@ -92,7 +92,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('id', userId)
         .maybeSingle();
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        // Ignore AbortError
+        if (profileError.name === 'AbortError' || profileError.message?.includes('aborted')) {
+          console.warn('Fetch user data aborted');
+          setIsLoading(false);
+          return;
+        }
+        throw profileError;
+      }
       setProfile(profileData ?? null);
       setSchoolId(profileData?.school_id ?? null);
 
@@ -101,7 +109,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .select('role')
         .eq('user_id', userId);
 
-      if (roleError) throw roleError;
+      if (roleError) {
+        // Ignore AbortError
+        if (roleError.name === 'AbortError' || roleError.message?.includes('aborted')) {
+          console.warn('Fetch user roles aborted');
+          setIsLoading(false);
+          return;
+        }
+        throw roleError;
+      }
 
       const roles = (roleRows ?? []).map((row) => row.role as UserRole);
       let resolvedRole =
@@ -133,7 +149,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setRole(resolvedRole);
-    } catch (error) {
+    } catch (error: any) {
+      // Ignore AbortError - it's usually caused by component unmounting or navigation
+      if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
+        console.warn('Fetch user data aborted');
+        setIsLoading(false);
+        return;
+      }
       console.error('Error fetching user data:', error);
       toast.error('Nie udało się pobrać danych użytkownika');
     } finally {
@@ -142,7 +164,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    let isMounted = true;
+    
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, nextSession) => {
+      if (!isMounted) return;
       // Handle token refresh
       if (event === 'TOKEN_REFRESHED' && nextSession) {
         setSession(nextSession);
@@ -196,9 +221,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       
       setUser(nextSession?.user ?? null);
-      if (nextSession?.user) {
+      if (nextSession?.user && isMounted) {
         setTimeout(() => {
-          fetchUserData(nextSession.user.id, nextSession.access_token);
+          if (isMounted) {
+            fetchUserData(nextSession.user.id, nextSession.access_token);
+          }
         }, 0);
       } else {
         setProfile(null);
@@ -210,13 +237,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Initial session check with retry
     const initializeSession = async () => {
+      if (!isMounted) return;
+      
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
+        if (!isMounted) return;
+        
         if (error) {
+          // Ignore AbortError - it's usually caused by component unmounting or navigation
+          if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+            console.warn('Session initialization aborted (likely due to navigation)');
+            if (isMounted) setIsLoading(false);
+            return;
+          }
+          
           console.error('Session error:', error);
           // If refresh token is invalid, clear everything and sign out
           if (error.message?.includes('Refresh Token') || error.message?.includes('Invalid Refresh Token')) {
             await supabase.auth.signOut();
+            if (isMounted) {
+              queryClient.clear();
+              setSession(null);
+              setUser(null);
+              setProfile(null);
+              setRole(null);
+              setSchoolId(null);
+            }
+          }
+          if (isMounted) setIsLoading(false);
+          return;
+        }
+        
+        if (!isMounted) return;
+        
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          await fetchUserData(session.user.id, session.access_token);
+        } else {
+          if (isMounted) setIsLoading(false);
+        }
+      } catch (error: any) {
+        if (!isMounted) return;
+        
+        // Ignore AbortError - it's usually caused by component unmounting or navigation
+        if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
+          console.warn('Session initialization aborted (likely due to navigation)');
+          if (isMounted) setIsLoading(false);
+          return;
+        }
+        
+        console.error('Error initializing session:', error);
+        // If refresh token error, sign out and clear
+        if (error?.message?.includes('Refresh Token') || error?.message?.includes('Invalid Refresh Token')) {
+          await supabase.auth.signOut();
+          if (isMounted) {
             queryClient.clear();
             setSession(null);
             setUser(null);
@@ -224,36 +299,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setRole(null);
             setSchoolId(null);
           }
-          setIsLoading(false);
-          return;
         }
-        
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await fetchUserData(session.user.id, session.access_token);
-        } else {
-          setIsLoading(false);
-        }
-      } catch (error: any) {
-        console.error('Error initializing session:', error);
-        // If refresh token error, sign out and clear
-        if (error?.message?.includes('Refresh Token') || error?.message?.includes('Invalid Refresh Token')) {
-          await supabase.auth.signOut();
-          queryClient.clear();
-          setSession(null);
-          setUser(null);
-          setProfile(null);
-          setRole(null);
-          setSchoolId(null);
-        }
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       }
     };
 
     initializeSession();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
