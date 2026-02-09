@@ -87,6 +87,10 @@ interface InvitationData {
 }
 
 export default function Auth() {
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Auth.tsx:89',message:'Auth component mounted',data:{timestamp:Date.now()},timestamp:Date.now(),runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+  // #endregion
+  
   const [searchParams] = useSearchParams();
   const invitationToken = searchParams.get('token');
   const mode = searchParams.get('mode');
@@ -111,6 +115,12 @@ export default function Auth() {
   const { login, signup, isAuthenticated, role, isLoading: authLoading } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
+  
+  // #region agent log
+  useEffect(() => {
+    fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Auth.tsx:113',message:'Auth state update',data:{authLoading,isAuthenticated,hasRole:!!role},timestamp:Date.now(),runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+  }, [authLoading, isAuthenticated, role]);
+  // #endregion
 
   // Load invitation data if token is present using secure RPC function
   useEffect(() => {
@@ -146,7 +156,10 @@ export default function Auth() {
     loadInvitation();
   }, [invitationToken, navigate]);
 
+  // Redirect authenticated users - but don't block rendering for unauthenticated users
   useEffect(() => {
+    // Only check redirect if authLoading is false (initialization complete)
+    // This allows unauthenticated users to see the form immediately
     if (!authLoading && isAuthenticated && role) {
       navigate(`/${role}`);
     }
@@ -602,13 +615,24 @@ export default function Auth() {
     }
   };
 
-  if (authLoading || loadingInvitation) {
+  // Only show loading spinner if:
+  // 1. We're loading invitation data (user came with invitation token)
+  // 2. OR auth is loading AND user is authenticated (need to redirect)
+  // For unauthenticated users, show form immediately - don't wait for authLoading
+  if (loadingInvitation || (authLoading && isAuthenticated)) {
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Auth.tsx:615',message:'Auth showing loading spinner',data:{authLoading,loadingInvitation,isAuthenticated},timestamp:Date.now(),runId:'post-fix',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-soft">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
+  
+  // #region agent log
+  fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Auth.tsx:612',message:'Auth rendering form',data:{isLogin},timestamp:Date.now(),runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+  // #endregion
 
   // Render invitation signup form
   if (invitation) {

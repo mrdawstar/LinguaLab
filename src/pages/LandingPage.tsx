@@ -245,6 +245,9 @@ export default function LandingPage() {
 
   const handleSelectPlan = async (planId: string) => {
     if (!user) {
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LandingPage.tsx:248',message:'Navigating to /auth',data:{timestamp:Date.now()},timestamp:Date.now(),runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+      // #endregion
       navigate('/auth');
       return;
     }

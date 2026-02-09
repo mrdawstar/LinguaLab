@@ -83,6 +83,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const fetchUserData = async (userId: string, accessToken?: string) => {
+    // #region agent log
+    const fetchStartTime = Date.now();
+    fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:85',message:'fetchUserData started',data:{userId},timestamp:Date.now(),runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
     try {
       setIsLoading(true);
 
@@ -93,9 +97,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .maybeSingle();
 
       if (profileError) {
-        // Ignore AbortError
+        // Ignore AbortError - expected during navigation/unmounting
         if (profileError.name === 'AbortError' || profileError.message?.includes('aborted')) {
-          console.warn('Fetch user data aborted');
           setIsLoading(false);
           return;
         }
@@ -110,9 +113,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('user_id', userId);
 
       if (roleError) {
-        // Ignore AbortError
+        // Ignore AbortError - expected during navigation/unmounting
         if (roleError.name === 'AbortError' || roleError.message?.includes('aborted')) {
-          console.warn('Fetch user roles aborted');
           setIsLoading(false);
           return;
         }
@@ -149,10 +151,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setRole(resolvedRole);
+      // #region agent log
+      const fetchDuration = Date.now() - fetchStartTime;
+      fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:149',message:'fetchUserData completed',data:{duration:fetchDuration,role:resolvedRole},timestamp:Date.now(),runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
     } catch (error: any) {
-      // Ignore AbortError - it's usually caused by component unmounting or navigation
+      // Ignore AbortError - expected during component unmounting or navigation
       if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
-        console.warn('Fetch user data aborted');
         setIsLoading(false);
         return;
       }
@@ -239,14 +244,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const initializeSession = async () => {
       if (!isMounted) return;
       
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:239',message:'initializeSession started',data:{timestamp:Date.now()},timestamp:Date.now(),runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      
       try {
+        const sessionStartTime = Date.now();
         const { data: { session }, error } = await supabase.auth.getSession();
+        const sessionDuration = Date.now() - sessionStartTime;
+        
+        // #region agent log
+        fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:243',message:'getSession completed',data:{hasSession:!!session,hasError:!!error,duration:sessionDuration},timestamp:Date.now(),runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
         if (!isMounted) return;
         
         if (error) {
-          // Ignore AbortError - it's usually caused by component unmounting or navigation
+          // Ignore AbortError - expected during component unmounting or navigation
           if (error.name === 'AbortError' || error.message?.includes('aborted')) {
-            console.warn('Session initialization aborted (likely due to navigation)');
             if (isMounted) setIsLoading(false);
             return;
           }
@@ -273,16 +287,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:271',message:'Calling fetchUserData',data:{userId:session.user.id},timestamp:Date.now(),runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
           await fetchUserData(session.user.id, session.access_token);
         } else {
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:274',message:'No session, setting isLoading false',data:{},timestamp:Date.now(),runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
           if (isMounted) setIsLoading(false);
         }
       } catch (error: any) {
         if (!isMounted) return;
         
-        // Ignore AbortError - it's usually caused by component unmounting or navigation
+        // Ignore AbortError - expected during component unmounting or navigation
         if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
-          console.warn('Session initialization aborted (likely due to navigation)');
           if (isMounted) setIsLoading(false);
           return;
         }
