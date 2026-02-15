@@ -214,7 +214,9 @@ export function useSubscription() {
       isLoading: false,
       error: null,
     };
-    
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useSubscription.ts:result',message:'check-subscription response',data:{access_allowed: result.access_allowed, subscribed: result.subscribed},timestamp:Date.now(),hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
     return result;
   }, [user, applySchoolFallback]);
 

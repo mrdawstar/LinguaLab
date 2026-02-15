@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { toast } from 'sonner';
@@ -30,6 +30,7 @@ interface AuthContextType {
     schoolName: string
   ) => Promise<{ error: Error | null }>;
   logout: () => Promise<void>;
+  refreshUserData: () => Promise<void>;
   isAuthenticated: boolean;
   canManageData: boolean;
   canViewFinances: boolean;
@@ -106,6 +107,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setProfile(profileData ?? null);
       setSchoolId(profileData?.school_id ?? null);
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:profile',message:'Profile loaded',data:{userId, schoolId: profileData?.school_id ?? null, hasProfile: !!profileData},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
 
       const { data: roleRows, error: roleError } = await supabase
         .from('user_roles')
@@ -125,6 +129,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       let resolvedRole =
         ROLE_PRIORITY.find((r) => roles.includes(r)) ??
         (roles[0] ?? null);
+      // #region agent log
+      fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:roles',message:'Roles loaded',data:{userId, rolesCount: (roleRows ?? []).length, resolvedRole},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
 
       let refreshedProfile = null;
       if (!resolvedRole) {
@@ -268,6 +275,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error('Session error:', error);
           // If refresh token is invalid, clear everything and sign out
           if (error.message?.includes('Refresh Token') || error.message?.includes('Invalid Refresh Token')) {
+            // #region agent log
+            fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:sessionError',message:'Session signOut due to refresh token',data:{msg: error?.message},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
             await supabase.auth.signOut();
             if (isMounted) {
               queryClient.clear();
@@ -309,6 +319,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('Error initializing session:', error);
         // If refresh token error, sign out and clear
         if (error?.message?.includes('Refresh Token') || error?.message?.includes('Invalid Refresh Token')) {
+          // #region agent log
+          fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:initSessionCatch',message:'Session signOut in catch (refresh token)',data:{msg: error?.message},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
           await supabase.auth.signOut();
           if (isMounted) {
             queryClient.clear();
@@ -330,6 +343,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       subscription.unsubscribe();
     };
   }, []);
+
+  const refreshUserData = useCallback(async () => {
+    const sess = session ?? (await supabase.auth.getSession()).data.session;
+    if (sess?.user) await fetchUserData(sess.user.id, sess.access_token);
+  }, [session]);
 
   const login = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -391,6 +409,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     signup,
     logout,
+    refreshUserData,
     isAuthenticated,
     canManageData,
     canViewFinances,

@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState, useRef } from 'react';
 import { Link, useNavigate, Navigate } from 'react-router-dom';
 import { useSubscriptionContext } from '@/contexts/SubscriptionContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,6 +35,15 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
   // 4. Subscription się jeszcze ładuje (subscriptionIsLoading === true)
   // NIE pokazuj loading jeśli mamy już zainicjalizowane dane - nawet jeśli są stare, użyj ich
   const isLoading = authIsLoading || (user && !schoolId) || contextIsLoading || subscriptionIsLoading;
+  const lastLogRef = useRef<string>('');
+  useEffect(() => {
+    const key = `${role ?? ''}-${schoolId ?? ''}-${access_allowed}-${isLoading}`;
+    if (key === lastLogRef.current) return;
+    lastLogRef.current = key;
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'SubscriptionGuard.tsx',message:'Guard state',data:{role,schoolId,access_allowed,authIsLoading,contextIsLoading,subscriptionIsLoading,isLoading,showBlocked: !contextIsLoading && !subscriptionIsLoading && !access_allowed},timestamp:Date.now(),hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
+  }, [role, schoolId, access_allowed, isLoading, authIsLoading, contextIsLoading, subscriptionIsLoading]);
 
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
 

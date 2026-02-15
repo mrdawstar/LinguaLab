@@ -112,7 +112,7 @@ export default function Auth() {
   const lastSignupAttemptRef = useRef<number>(0);
   const signupAttemptCountRef = useRef<number>(0);
   
-  const { login, signup, isAuthenticated, role, isLoading: authLoading } = useAuth();
+  const { login, signup, logout, isAuthenticated, role, isLoading: authLoading, refreshUserData } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   
@@ -121,6 +121,24 @@ export default function Auth() {
     fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Auth.tsx:113',message:'Auth state update',data:{authLoading,isAuthenticated,hasRole:!!role},timestamp:Date.now(),runId:'run1',hypothesisId:'C'})}).catch(()=>{});
   }, [authLoading, isAuthenticated, role]);
   // #endregion
+
+  // When logged in but no role (e.g. re-invited manager) and URL has invitation token, accept invitation then refetch user data
+  const hasTriedAcceptRef = useRef(false);
+  useEffect(() => {
+    if (!isAuthenticated) hasTriedAcceptRef.current = false;
+  }, [isAuthenticated]);
+  useEffect(() => {
+    if (!isAuthenticated || !invitationToken || role || authLoading || hasTriedAcceptRef.current) return;
+    hasTriedAcceptRef.current = true;
+    (async () => {
+      try {
+        const { data: ok, error } = await supabase.rpc('accept_invitation_for_existing_user', { _token: invitationToken });
+        if (ok) await refreshUserData();
+      } catch {
+        // Ignore; user can use "Spróbuj ponownie"
+      }
+    })();
+  }, [isAuthenticated, invitationToken, role, authLoading, refreshUserData]);
 
   // Load invitation data if token is present using secure RPC function
   useEffect(() => {
@@ -158,6 +176,9 @@ export default function Auth() {
 
   // Redirect authenticated users - but don't block rendering for unauthenticated users
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Auth.tsx:redirect',message:'Redirect check',data:{authLoading,isAuthenticated,role,willRedirect: !authLoading && !!isAuthenticated && !!role},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
+    // #endregion
     // Only check redirect if authLoading is false (initialization complete)
     // This allows unauthenticated users to see the form immediately
     if (!authLoading && isAuthenticated && role) {
@@ -626,6 +647,37 @@ export default function Auth() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-soft">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Logged in but role not loaded (fetchUserData failed or returned no role) – show retry so user is not stuck
+  if (isAuthenticated && !role && !authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gradient-soft p-4">
+        <div className="glass-card max-w-md w-full p-8 text-center">
+          <AlertCircle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Ładowanie danych konta</h2>
+          <p className="text-muted-foreground text-sm mb-6">
+            Nie udało się załadować Twojej roli ani szkoły. Możliwe, że zaproszenie nie zostało jeszcze przypisane do konta. Spróbuj ponownie lub odśwież stronę.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button onClick={() => refreshUserData()} className="gap-2">
+              <Loader2 className="h-4 w-4 animate-spin hidden" id="auth-retry-spinner" />
+              Spróbuj ponownie
+            </Button>
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              Odśwież stronę
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-6">
+            <button type="button" onClick={() => logout()} className="underline hover:no-underline">
+              Wyloguj
+            </button>
+            {' · '}
+            <Link to="/" className="underline hover:no-underline">Strona główna</Link>
+          </p>
+        </div>
       </div>
     );
   }
