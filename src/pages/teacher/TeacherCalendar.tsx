@@ -71,20 +71,21 @@ export default function TeacherCalendar() {
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
-  // Fetch teacher record for current user
+  // Fetch teacher record for current user in current school (zaproszony nauczyciel – zawsze właściwa szkoła)
   const { data: teacher, isLoading: teacherLoading } = useQuery({
-    queryKey: ['current-teacher', user?.id],
+    queryKey: ['current-teacher', user?.id, schoolId],
     queryFn: async () => {
-      if (!user?.id) return null;
+      if (!user?.id || !schoolId) return null;
       const { data, error } = await supabase
         .from('teachers')
         .select('id, calendar_color')
         .eq('user_id', user.id)
+        .eq('school_id', schoolId)
         .maybeSingle();
       if (error) throw error;
       return data;
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && !!schoolId,
   });
 
   const teacherId = teacher?.id;

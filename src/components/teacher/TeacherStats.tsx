@@ -7,7 +7,7 @@ import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-f
 import { useNavigate } from 'react-router-dom';
 
 export function TeacherStats() {
-  const { user } = useAuth();
+  const { user, schoolId } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -29,11 +29,12 @@ export function TeacherStats() {
       const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
       const monthEnd = format(endOfMonth(new Date()), 'yyyy-MM-dd');
 
-      // Get teacher id for current user
+      // Get teacher id for current user in current school (zaproszony nauczyciel – zawsze właściwa szkoła)
       const { data: teacherData } = await supabase
         .from('teachers')
         .select('id')
         .eq('user_id', user?.id)
+        .eq('school_id', schoolId!)
         .maybeSingle();
 
       if (!teacherData) {
@@ -109,12 +110,12 @@ export function TeacherStats() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, schoolId]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !schoolId) return;
     fetchStats();
-  }, [user, fetchStats]);
+  }, [user, schoolId, fetchStats]);
 
   if (loading) {
     return (

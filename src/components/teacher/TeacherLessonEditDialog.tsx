@@ -89,26 +89,27 @@ export function TeacherLessonEditDialog({
   lesson,
   onSuccess 
 }: TeacherLessonEditDialogProps) {
-  const { user } = useAuth();
+  const { user, schoolId: authSchoolId } = useAuth();
   const queryClient = useQueryClient();
   const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
-  // Fetch teacher record
+  // Fetch teacher record for current user in current school (zaproszony nauczyciel – zawsze właściwa szkoła)
   const { data: teacher } = useQuery({
-    queryKey: ['current-teacher', user?.id],
+    queryKey: ['current-teacher', user?.id, authSchoolId],
     queryFn: async () => {
-      if (!user?.id) return null;
+      if (!user?.id || !authSchoolId) return null;
       const { data, error } = await supabase
         .from('teachers')
         .select('id, school_id')
         .eq('user_id', user.id)
+        .eq('school_id', authSchoolId)
         .maybeSingle();
       if (error) throw error;
       return data;
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && !!authSchoolId,
   });
 
   const teacherId = teacher?.id;

@@ -31,7 +31,7 @@ interface Group {
 }
 
 export default function TeacherStudents() {
-  const { user, profile } = useAuth();
+  const { user, profile, schoolId } = useAuth();
   const { preferences } = useUserPreferences();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -57,10 +57,10 @@ export default function TeacherStudents() {
   };
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !schoolId) return;
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, schoolId]);
 
   // Update color when preferences change (for real-time updates after initial load)
   useEffect(() => {
@@ -77,6 +77,7 @@ export default function TeacherStudents() {
           .from('teachers')
           .select('id')
           .eq('user_id', user?.id)
+          .eq('school_id', schoolId!)
           .maybeSingle(),
         supabase
           .from('user_preferences')
