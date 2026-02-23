@@ -100,19 +100,35 @@ serve(async (req) => {
       });
 
       if (invitation.role === "teacher") {
-        const { data: existingTeacher } = await supabaseClient
+        const { data: existingByUser } = await supabaseClient
           .from("teachers")
           .select("id")
           .eq("user_id", user.id)
           .maybeSingle();
-
-        if (!existingTeacher) {
-          await supabaseClient.from("teachers").insert({
-            school_id: invitation.school_id,
-            user_id: user.id,
-            name: fullName,
-            email,
-          });
+        if (existingByUser) {
+          // Already linked
+        } else {
+          const { data: existingUnlinked } = await supabaseClient
+            .from("teachers")
+            .select("id")
+            .eq("school_id", invitation.school_id)
+            .eq("email", email)
+            .is("user_id", null)
+            .limit(1)
+            .maybeSingle();
+          if (existingUnlinked) {
+            await supabaseClient
+              .from("teachers")
+              .update({ user_id: user.id, name: fullName })
+              .eq("id", existingUnlinked.id);
+          } else {
+            await supabaseClient.from("teachers").insert({
+              school_id: invitation.school_id,
+              user_id: user.id,
+              name: fullName,
+              email,
+            });
+          }
         }
       }
 
