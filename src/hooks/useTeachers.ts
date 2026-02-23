@@ -77,7 +77,10 @@ export function useTeachers() {
       toast.success('Nauczyciel został usunięty');
     },
     onError: (error) => {
-      toast.error('Błąd podczas usuwania: ' + error.message);
+      const msg = error.message.includes('students_teacher_id_fkey')
+        ? 'Nie można usunąć nauczyciela z przypisanymi uczniami. Odłącz uczniów od tego nauczyciela w sekcji Uczniowie, a potem usuń nauczyciela.'
+        : 'Błąd podczas usuwania: ' + error.message;
+      toast.error(msg);
     },
   });
 
