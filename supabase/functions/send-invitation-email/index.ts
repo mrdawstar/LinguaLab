@@ -73,13 +73,12 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`Authenticated user: ${userId}`);
 
     // 2. Verify user has permission to send invitations (admin or manager role)
-    const { data: roleData, error: roleError } = await supabaseClient
+    const { data: rolesRows, error: roleError } = await supabaseClient
       .from('user_roles')
       .select('role')
-      .eq('user_id', userId)
-      .single();
+      .eq('user_id', userId);
 
-    if (roleError || !roleData) {
+    if (roleError || !rolesRows?.length) {
       console.error("Role lookup error:", roleError);
       return new Response(
         JSON.stringify({ error: 'Forbidden - No role assigned' }),
@@ -87,15 +86,16 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    if (!['admin', 'manager'].includes(roleData.role)) {
-      console.error(`Insufficient permissions: user role is ${roleData.role}`);
+    const hasPermission = rolesRows.some((r: { role: string }) => ['admin', 'manager'].includes(r.role));
+    if (!hasPermission) {
+      console.error(`Insufficient permissions: user roles ${rolesRows.map((r: { role: string }) => r.role).join(', ')}`);
       return new Response(
         JSON.stringify({ error: 'Forbidden - Insufficient permissions' }),
         { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    console.log(`User has role: ${roleData.role}`);
+    console.log(`User has permission to send invitations`);
 
     if (!RESEND_API_KEY) {
       console.error("RESEND_API_KEY is not configured");
@@ -173,8 +173,9 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // 4. Verify the invitation email matches the request
-    if (invitation.email !== email) {
+    // 4. Verify the invitation email matches the request (case-insensitive, trim)
+    const norm = (s: string | null | undefined) => (s ?? '').trim().toLowerCase();
+    if (norm(invitation.email) !== norm(email)) {
       console.error(`Email mismatch: invitation email ${invitation.email} != request email ${email}`);
       return new Response(
         JSON.stringify({ error: 'Bad Request - Email mismatch' }),
@@ -292,9 +293,15 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     if (!res.ok) {
-      const errorData = await res.json();
-      console.error("Resend API error:", errorData);
-      throw new Error(errorData.message || "Failed to send email");
+      let errorMessage = "Failed to send email";
+      try {
+        const errorData = await res.json();
+        errorMessage = (errorData && (errorData.message || errorData.error)) || errorMessage;
+      } catch {
+        errorMessage = await res.text() || `Resend API error: ${res.status}`;
+      }
+      console.error("Resend API error:", errorMessage);
+      throw new Error(errorMessage);
     }
 
     const emailResponse = await res.json();

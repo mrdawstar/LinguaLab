@@ -37,20 +37,21 @@ export function useInvitations() {
   const sendInvitation = useMutation({
     mutationFn: async ({ email, role }: { email: string; role: 'admin' | 'teacher' | 'manager' }) => {
       if (!schoolId || !user) throw new Error('Brak danych');
-      
-      // Create invitation in database
-      const { data, error } = await supabase
-        .from('invitations')
-        .insert({
-          school_id: schoolId,
-          email,
-          role,
-          invited_by: user.id,
-        })
-        .select()
-        .single();
-      
+
+      const trimmedEmail = email.trim();
+      if (!trimmedEmail) throw new Error('Email jest wymagany');
+
+      // Create or refresh invitation (same email+role: new token and expiry; after delete: new row)
+      const { data: rows, error } = await supabase.rpc('create_or_refresh_invitation', {
+        p_school_id: schoolId,
+        p_email: trimmedEmail,
+        p_role: role,
+        p_invited_by: user.id,
+      });
+
       if (error) throw error;
+      const data = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+      if (!data) throw new Error('Brak odpowiedzi z zaproszenia');
       
       // Send invitation email
       try {
@@ -100,11 +101,7 @@ export function useInvitations() {
       toast.success(`Zaproszenie zostało wysłane na email ${data.email}`);
     },
     onError: (error: Error) => {
-      if (error.message.includes('duplicate')) {
-        toast.error('To zaproszenie już istnieje');
-      } else {
-        toast.error('Błąd podczas wysyłania zaproszenia: ' + error.message);
-      }
+      toast.error('Błąd podczas wysyłania zaproszenia: ' + error.message);
     },
   });
 
@@ -118,6 +115,7 @@ export function useInvitations() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invitations', schoolId] });
+      queryClient.invalidateQueries({ queryKey: ['teachers', schoolId] });
       toast.success('Zaproszenie zostało usunięte');
     },
     onError: (error) => {

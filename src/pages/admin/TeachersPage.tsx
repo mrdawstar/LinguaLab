@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 export default function TeachersPage() {
-  const { teachers, isLoading, deleteTeacher } = useTeachers();
+  const { teachers, isLoading, deleteTeacher, unlinkTeacher } = useTeachers();
   const { students } = useStudents();
   const { groups } = useGroups();
   const { role, canManageData } = useAuth();
@@ -38,6 +38,7 @@ export default function TeachersPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [unlinkId, setUnlinkId] = useState<string | null>(null);
   const [viewingTeacher, setViewingTeacher] = useState<Teacher | null>(null);
 
   const getContactValue = (teacher: Teacher) => {
@@ -85,6 +86,14 @@ export default function TeachersPage() {
     if (deleteId) {
       deleteTeacher.mutate(deleteId);
       setDeleteId(null);
+    }
+  };
+
+  const handleUnlink = () => {
+    if (unlinkId) {
+      unlinkTeacher.mutate(unlinkId);
+      setUnlinkId(null);
+      if (viewingTeacher?.id === unlinkId) setViewingTeacher(null);
     }
   };
 
@@ -312,6 +321,7 @@ export default function TeachersPage() {
             handleEdit(viewingTeacher);
           }
         }}
+        onUnlink={canManageData ? (id) => setUnlinkId(id) : undefined}
         canManageData={canManageData}
       />
 
@@ -330,6 +340,23 @@ export default function TeachersPage() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Usuń
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!unlinkId} onOpenChange={() => setUnlinkId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Odłączyć konto tego nauczyciela?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Nauczyciel straci dostęp do systemu (nie będzie mógł się zalogować). Rekord nauczyciela zostanie – będzie widoczny w zaproszeniach jako „bez konta” i będzie go można ponownie zaprosić.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Anuluj</AlertDialogCancel>
+            <AlertDialogAction onClick={handleUnlink}>
+              Odłącz konto
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

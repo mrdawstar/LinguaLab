@@ -9,6 +9,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -18,6 +23,7 @@ import {
 import { useInvitations } from '@/hooks/useInvitations';
 import { useTeachers } from '@/hooks/useTeachers';
 import { useAuth } from '@/contexts/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, Mail, UserPlus, AlertCircle, Copy, CheckCircle2, Link2, User, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateEmailFormat, validateEmailExists } from '@/lib/utils';
@@ -39,7 +45,8 @@ interface CreatedInvitation {
 }
 
 export function InvitationDialog({ open, onOpenChange }: InvitationDialogProps) {
-  const { role } = useAuth();
+  const { role, schoolId } = useAuth();
+  const queryClient = useQueryClient();
   const { sendInvitation } = useInvitations();
   const { teachers } = useTeachers();
   const [mode, setMode] = useState<InvitationMode>('new');
@@ -49,12 +56,24 @@ export function InvitationDialog({ open, onOpenChange }: InvitationDialogProps) 
   const [emailError, setEmailError] = useState<string | null>(null);
   const [createdInvitation, setCreatedInvitation] = useState<CreatedInvitation | null>(null);
   const [copied, setCopied] = useState(false);
+  const [teacherPopoverOpen, setTeacherPopoverOpen] = useState(false);
   const validationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const unlinkedTeachers = teachers.filter((t) => !t.user_id && t.email?.trim());
+  // Pokazujemy WSZYSTKICH nauczycieli z sekcji Nauczyciele, żeby każdy był widoczny
+  const unlinkedTeachers = teachers.filter((t) => !t.user_id);
+  const unlinkedWithEmail = unlinkedTeachers.filter((t) => t.email?.trim());
   const selectedTeacher = selectedTeacherId
-    ? unlinkedTeachers.find((t) => t.id === selectedTeacherId)
+    ? teachers.find((t) => t.id === selectedTeacherId)
     : null;
+  const canSelectForInvite = (t: { user_id?: string | null; email?: string | null }) =>
+    !t.user_id && !!t.email?.trim();
+
+  // Po otwarciu dialogu odśwież listę nauczycieli, żeby po usunięciu zaproszenia osoby znów były na liście
+  useEffect(() => {
+    if (open && schoolId) {
+      queryClient.invalidateQueries({ queryKey: ['teachers', schoolId] });
+    }
+  }, [open, schoolId, queryClient]);
 
   const validateEmail = async (value: string) => {
     // First check format
@@ -112,7 +131,15 @@ export function InvitationDialog({ open, onOpenChange }: InvitationDialogProps) 
     const roleToUse = mode === 'existing_teacher' ? 'teacher' as const : inviteRole;
 
     if (!emailToUse) {
-      if (mode === 'existing_teacher') toast.error('Wybierz nauczyciela');
+      if (mode === 'existing_teacher') {
+        if (selectedTeacher?.user_id) {
+          toast.error('Ta osoba ma już konto. Użyj opcji „Nowy” i wpisz jej email.');
+        } else if (selectedTeacher && !selectedTeacher.email?.trim()) {
+          toast.error('Ten nauczyciel nie ma emaila. Dodaj go w sekcji Nauczyciele i spróbuj ponownie.');
+        } else {
+          toast.error('Wybierz nauczyciela');
+        }
+      }
       return;
     }
 
@@ -148,6 +175,7 @@ export function InvitationDialog({ open, onOpenChange }: InvitationDialogProps) 
     setMode('new');
     setEmail('');
     setSelectedTeacherId('');
+    setTeacherPopoverOpen(false);
     setEmailError(null);
     setCreatedInvitation(null);
     setCopied(false);
@@ -246,7 +274,7 @@ export function InvitationDialog({ open, onOpenChange }: InvitationDialogProps) 
   }
 
   const canSubmitNew = mode === 'new' && !emailError && email.trim().length > 0;
-  const canSubmitExisting = mode === 'existing_teacher' && !!selectedTeacherId;
+  const canSubmitExisting = mode === 'existing_teacher' && !!selectedTeacherId && selectedTeacher != null && canSelectForInvite(selectedTeacher);
   const canSubmit = (mode === 'new' && canSubmitNew) || (mode === 'existing_teacher' && canSubmitExisting);
 
   return (
@@ -344,32 +372,80 @@ export function InvitationDialog({ open, onOpenChange }: InvitationDialogProps) 
           {mode === 'existing_teacher' && (
             <>
               <div>
-                <label className="mb-2 block text-sm font-medium">Nauczyciel bez konta</label>
-                <Select
-                  value={selectedTeacherId}
-                  onValueChange={setSelectedTeacherId}
-                  required={mode === 'existing_teacher'}
-                >
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue placeholder="Wybierz nauczyciela..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {unlinkedTeachers.length === 0 ? (
+                <label className="mb-2 block text-sm font-medium">Wybierz nauczyciela</label>
+                <Popover open={teacherPopoverOpen} onOpenChange={setTeacherPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full justify-between rounded-xl font-normal"
+                    >
+                      {selectedTeacher
+                        ? `${selectedTeacher.name}${selectedTeacher.email ? ` · ${selectedTeacher.email}` : ''}`
+                        : 'Wybierz nauczyciela...'}
+                      <Users className="ml-2 h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="min-w-72 w-full max-w-[calc(100vw-2rem)] p-0" align="start">
+                    {teachers.length === 0 ? (
                       <div className="py-4 px-3 text-sm text-muted-foreground text-center">
-                        Brak nauczycieli bez konta. Dodaj nauczyciela w sekcji Nauczyciele.
+                        Brak nauczycieli. Dodaj nauczyciela w sekcji Nauczyciele.
                       </div>
                     ) : (
-                      unlinkedTeachers.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>
-                          {t.name}
-                          {t.email ? ` · ${t.email}` : ''}
-                        </SelectItem>
-                      ))
+                      <div
+                        className="h-72 w-full overflow-y-auto overflow-x-hidden overscroll-contain py-1"
+                        style={{ maxHeight: '18rem' }}
+                        role="listbox"
+                      >
+                        <div className="p-1">
+                          {teachers.map((t) => {
+                            const hasAccount = !!t.user_id;
+                            const hasEmail = !!t.email?.trim();
+                            const selectable = canSelectForInvite(t);
+                            return (
+                              <button
+                                key={t.id}
+                                type="button"
+                                role="option"
+                                aria-selected={selectedTeacherId === t.id}
+                                className={cn(
+                                  'relative flex w-full select-none items-center rounded-sm py-2 pl-3 pr-2 text-left text-sm outline-none',
+                                  selectable && 'cursor-pointer hover:bg-accent hover:text-accent-foreground',
+                                  !selectable && 'cursor-default opacity-75 text-muted-foreground',
+                                  selectedTeacherId === t.id && selectable && 'bg-accent'
+                                )}
+                                onClick={() => {
+                                  setSelectedTeacherId(t.id);
+                                  if (selectable) setTeacherPopoverOpen(false);
+                                  else if (hasAccount) toast.info('Ta osoba ma już konto. Wyślij link przez opcję „Nowy” (wpisz jej email).');
+                                  else toast.error('Najpierw dodaj email w sekcji Nauczyciele.');
+                                }}
+                              >
+                                {t.name}
+                                {hasEmail && ` · ${t.email?.trim()}`}
+                                {hasAccount && ' · (ma już konto – wyślij link przez opcję Nowy)'}
+                                {!hasAccount && !hasEmail && ' · (brak email – uzupełnij w Nauczyciele)'}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                     )}
-                  </SelectContent>
-                </Select>
+                  </PopoverContent>
+                </Popover>
                 <p className="mt-1.5 text-xs text-muted-foreground">
+                  {teachers.length > 0 && (
+                    <span className="block mb-0.5">
+                      Wszyscy nauczyciele ({teachers.length}). Do zaproszenia: {unlinkedWithEmail.length} bez konta z emailem.
+                      {unlinkedTeachers.length > unlinkedWithEmail.length && unlinkedTeachers.length > 0 && (
+                        <> {unlinkedTeachers.length - unlinkedWithEmail.length} bez emaila – uzupełnij w Nauczyciele.</>
+                      )}
+                    </span>
+                  )}
                   Zaproszenie trafi na email wybranego nauczyciela. Po zalogowaniu konto zostanie powiązane z tym profilem (uczniowie pozostaną przypisani).
+                  <span className="block mt-1 text-muted-foreground/90">
+                    Jeśli kogoś nie ma na liście, ma już konto – wyślij link ponownie przez opcję „Nowy” (wpisz email).
+                  </span>
                 </p>
               </div>
             </>

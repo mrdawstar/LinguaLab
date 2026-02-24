@@ -16,7 +16,8 @@ import {
   Video,
   Edit,
   ExternalLink,
-  Palette
+  Palette,
+  UserMinus
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
@@ -28,6 +29,7 @@ interface TeacherDetailsSheetProps {
   students?: Student[];
   groups?: Tables<'groups'>[];
   onEdit?: () => void;
+  onUnlink?: (teacherId: string) => void;
   canManageData?: boolean;
 }
 
@@ -38,6 +40,7 @@ export function TeacherDetailsSheet({
   students = [],
   groups = [],
   onEdit,
+  onUnlink,
   canManageData
 }: TeacherDetailsSheetProps) {
   if (!teacher) return null;
@@ -71,11 +74,22 @@ export function TeacherDetailsSheet({
 
         <div className="mt-4 space-y-6">
           {canManageData && onEdit && (
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
               <Button variant="outline" size="sm" onClick={() => { onOpenChange(false); onEdit(); }}>
                 <Edit className="mr-2 h-4 w-4" />
                 Edytuj
               </Button>
+              {teacher.user_id && onUnlink && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-amber-600 border-amber-200 hover:bg-amber-50 hover:text-amber-700"
+                  onClick={() => onUnlink(teacher.id)}
+                >
+                  <UserMinus className="mr-2 h-4 w-4" />
+                  Odłącz konto
+                </Button>
+              )}
             </div>
           )}
           {/* Statystyki */}

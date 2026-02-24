@@ -84,11 +84,26 @@ export function useTeachers() {
     },
   });
 
+  const unlinkTeacher = useMutation({
+    mutationFn: async (teacherId: string) => {
+      const { error } = await supabase.rpc('unlink_teacher_account', { p_teacher_id: teacherId });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teachers', schoolId] });
+      toast.success('Konto zostało odłączone. Nauczyciel pojawi się w zaproszeniach jako bez konta.');
+    },
+    onError: (error: Error) => {
+      toast.error('Błąd: ' + error.message);
+    },
+  });
+
   return {
     teachers: teachersQuery.data ?? [],
     isLoading: teachersQuery.isLoading,
     addTeacher,
     updateTeacher,
     deleteTeacher,
+    unlinkTeacher,
   };
 }
