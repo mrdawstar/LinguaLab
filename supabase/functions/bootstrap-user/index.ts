@@ -108,14 +108,14 @@ serve(async (req) => {
         if (existingByUser) {
           // Already linked
         } else {
-          const { data: existingUnlinked } = await supabaseClient
+          const { data: unlinkedTeachers } = await supabaseClient
             .from("teachers")
-            .select("id")
+            .select("id, email")
             .eq("school_id", invitation.school_id)
-            .eq("email", email)
-            .is("user_id", null)
-            .limit(1)
-            .maybeSingle();
+            .is("user_id", null);
+          const existingUnlinked = (unlinkedTeachers || []).find(
+            (t) => t.email && email && t.email.trim().toLowerCase() === email.trim().toLowerCase()
+          );
           if (existingUnlinked) {
             await supabaseClient
               .from("teachers")

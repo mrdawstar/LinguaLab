@@ -87,10 +87,6 @@ interface InvitationData {
 }
 
 export default function Auth() {
-  // #region agent log
-  fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Auth.tsx:89',message:'Auth component mounted',data:{timestamp:Date.now()},timestamp:Date.now(),runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-  // #endregion
-  
   const [searchParams] = useSearchParams();
   const invitationToken = searchParams.get('token');
   const mode = searchParams.get('mode');
@@ -115,12 +111,6 @@ export default function Auth() {
   const { login, signup, logout, isAuthenticated, role, isLoading: authLoading, refreshUserData } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
-  
-  // #region agent log
-  useEffect(() => {
-    fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Auth.tsx:113',message:'Auth state update',data:{authLoading,isAuthenticated,hasRole:!!role},timestamp:Date.now(),runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-  }, [authLoading, isAuthenticated, role]);
-  // #endregion
 
   // When logged in but no role (e.g. re-invited manager) and URL has invitation token, accept invitation then refetch user data
   const hasTriedAcceptRef = useRef(false);
@@ -176,9 +166,6 @@ export default function Auth() {
 
   // Redirect authenticated users - but don't block rendering for unauthenticated users
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'Auth.tsx:redirect',message:'Redirect check',data:{authLoading,isAuthenticated,role,willRedirect: !authLoading && !!isAuthenticated && !!role},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
     // Only check redirect if authLoading is false (initialization complete)
     // This allows unauthenticated users to see the form immediately
     if (!authLoading && isAuthenticated && role) {
