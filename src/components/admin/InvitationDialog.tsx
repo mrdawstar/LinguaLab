@@ -386,18 +386,24 @@ export function InvitationDialog({ open, onOpenChange }: InvitationDialogProps) 
                       <Users className="ml-2 h-4 w-4 opacity-50" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="min-w-72 w-full max-w-[calc(100vw-2rem)] p-0" align="start">
+                  <PopoverContent 
+                    className="min-w-72 w-full max-w-[calc(100vw-2rem)] p-0" 
+                    align="start"
+                    side="bottom"
+                    sideOffset={4}
+                    avoidCollisions={false}
+                  >
                     {teachers.length === 0 ? (
                       <div className="py-4 px-3 text-sm text-muted-foreground text-center">
                         Brak nauczycieli. Dodaj nauczyciela w sekcji Nauczyciele.
                       </div>
                     ) : (
                       <div
-                        className="h-72 w-full overflow-y-auto overflow-x-hidden overscroll-contain py-1"
-                        style={{ maxHeight: '18rem' }}
+                        className="w-full overflow-x-hidden overscroll-contain py-1 scrollbar-thin"
+                        style={{ maxHeight: '300px', overflowY: 'scroll' }}
                         role="listbox"
                       >
-                        <div className="p-1">
+                        <div className="p-1 pr-2">
                           {teachers.map((t) => {
                             const hasAccount = !!t.user_id;
                             const hasEmail = !!t.email?.trim();

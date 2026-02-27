@@ -1,11 +1,12 @@
-import { useState } from 'react';
-import { Plus, Search, Edit, Trash2, GraduationCap, Loader2, ExternalLink } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Plus, Search, Edit, Trash2, GraduationCap, Loader2, ExternalLink, AlertTriangle } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useTeachers, Teacher } from '@/hooks/useTeachers';
 import { useStudents } from '@/hooks/useStudents';
 import { useGroups } from '@/hooks/useGroups';
+import { useLessons } from '@/hooks/useLessons';
 import { useAuth } from '@/contexts/AuthContext';
 import { TeacherDialog } from '@/components/admin/TeacherDialog';
 import { TeacherDetailsSheet } from '@/components/admin/TeacherDetailsSheet';
@@ -29,9 +30,10 @@ import {
 } from '@/components/ui/alert-dialog';
 
 export default function TeachersPage() {
-  const { teachers, isLoading, deleteTeacher, unlinkTeacher } = useTeachers();
+  const { teachers, isLoading, deleteTeacher, deleteTeacherWithRelations, unlinkTeacher } = useTeachers();
   const { students } = useStudents();
   const { groups } = useGroups();
+  const { lessons } = useLessons();
   const { role, canManageData } = useAuth();
   
   const [search, setSearch] = useState('');
@@ -73,6 +75,18 @@ export default function TeachersPage() {
   const getGroupCount = (teacherId: string) =>
     groups.filter((g) => g.teacher_id === teacherId).length;
 
+  const getLessonCount = (teacherId: string) =>
+    lessons.filter((l) => l.teacher_id === teacherId).length;
+
+  const deleteTeacherInfo = useMemo(() => {
+    if (!deleteId) return null;
+    const studentCount = getStudentCount(deleteId);
+    const groupCount = getGroupCount(deleteId);
+    const lessonCount = getLessonCount(deleteId);
+    const hasRelations = studentCount > 0 || groupCount > 0 || lessonCount > 0;
+    return { studentCount, groupCount, lessonCount, hasRelations };
+  }, [deleteId, students, groups, lessons]);
+
   const handleEdit = (teacher: Teacher) => {
     setEditingTeacher(teacher);
     setDialogOpen(true);
@@ -85,6 +99,13 @@ export default function TeachersPage() {
   const handleDelete = () => {
     if (deleteId) {
       deleteTeacher.mutate(deleteId);
+      setDeleteId(null);
+    }
+  };
+
+  const handleDeleteWithRelations = () => {
+    if (deleteId) {
+      deleteTeacherWithRelations.mutate(deleteId);
       setDeleteId(null);
     }
   };
@@ -329,18 +350,53 @@ export default function TeachersPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Czy na pewno chcesz usunąć tego nauczyciela?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Ta akcja jest nieodwracalna. Nauczyciel zostanie trwale usunięty z systemu.
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                {deleteTeacherInfo?.hasRelations ? (
+                  <div className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        <p className="font-medium text-amber-700 dark:text-amber-400">
+                          Uwaga! Nauczyciel ma przypisane elementy:
+                        </p>
+                        <ul className="text-sm text-amber-600 dark:text-amber-300 list-disc list-inside">
+                          {deleteTeacherInfo.lessonCount > 0 && (
+                            <li>{deleteTeacherInfo.lessonCount} lekcji w harmonogramie (zostaną usunięte)</li>
+                          )}
+                          {deleteTeacherInfo.studentCount > 0 && (
+                            <li>{deleteTeacherInfo.studentCount} uczniów (zostaną odłączeni)</li>
+                          )}
+                          {deleteTeacherInfo.groupCount > 0 && (
+                            <li>{deleteTeacherInfo.groupCount} grup (zostaną odłączone)</li>
+                          )}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p>Ta akcja jest nieodwracalna. Nauczyciel zostanie trwale usunięty z systemu.</p>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Anuluj</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Usuń
-            </AlertDialogAction>
+            {deleteTeacherInfo?.hasRelations ? (
+              <AlertDialogAction
+                onClick={handleDeleteWithRelations}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Usuń wraz z powiązaniami
+              </AlertDialogAction>
+            ) : (
+              <AlertDialogAction
+                onClick={handleDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Usuń
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

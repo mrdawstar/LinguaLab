@@ -1,5 +1,6 @@
-import { Users, MapPin, Calendar, CheckCircle2 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { Users, MapPin, Calendar, CheckCircle2, UserCheck, UserX } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -9,7 +10,28 @@ import { format } from 'date-fns';
 export function UpcomingLessons() {
   const { schoolId, role } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const schedulePath = role === 'teacher' ? '/teacher/lessons' : '/admin/schedule';
+
+  // Realtime subscription for lesson_attendance changes
+  useEffect(() => {
+    if (!schoolId) return;
+
+    const channel = supabase
+      .channel('upcoming-lessons-attendance')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'lesson_attendance' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['upcomingLessons', schoolId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [schoolId, queryClient]);
 
   const { data: lessons = [], isLoading } = useQuery({
     queryKey: ['upcomingLessons', schoolId],
@@ -48,7 +70,29 @@ export function UpcomingLessons() {
         return [];
       }
 
-      return data || [];
+      if (!data || data.length === 0) return [];
+
+      const lessonIds = data.map(l => l.id);
+      const { data: attendanceData } = await supabase
+        .from('lesson_attendance')
+        .select('lesson_id, attended')
+        .in('lesson_id', lessonIds);
+
+      const attendanceByLesson = new Map<string, { total: number; present: number; hasAttendance: boolean }>();
+      (attendanceData || []).forEach((record: any) => {
+        const lessonId = record.lesson_id;
+        if (!attendanceByLesson.has(lessonId)) {
+          attendanceByLesson.set(lessonId, { total: 0, present: 0, hasAttendance: true });
+        }
+        const info = attendanceByLesson.get(lessonId)!;
+        info.total += 1;
+        if (record.attended) info.present += 1;
+      });
+
+      return data.map(lesson => ({
+        ...lesson,
+        attendance_info: attendanceByLesson.get(lesson.id) || { total: 0, present: 0, hasAttendance: false }
+      }));
     },
     enabled: !!schoolId,
   });
@@ -107,6 +151,8 @@ export function UpcomingLessons() {
             const timeDisplay = lesson.start_time.slice(0, 5);
             const isCompleted = lesson.is_completed;
             const isNextLesson = index === nextLessonIndex;
+            const attendanceInfo = (lesson as any).attendance_info;
+            const hasAttendance = attendanceInfo?.hasAttendance || false;
             
             return (
               <div
@@ -127,6 +173,27 @@ export function UpcomingLessons() {
                 ) : isNextLesson && (
                   <span className="absolute -top-2 left-3 rounded-full bg-primary px-2 py-0.5 text-[9px] font-medium text-primary-foreground shadow-sm sm:left-4 sm:text-[10px] z-10">
                     Następne
+                  </span>
+                )}
+                
+                {/* Attendance badge */}
+                {isCompleted && (
+                  <span className={`absolute -top-2 right-3 flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-medium shadow-sm sm:right-4 sm:text-[10px] z-10 ${
+                    hasAttendance 
+                      ? 'bg-emerald-500 text-white' 
+                      : 'bg-amber-500 text-white'
+                  }`}>
+                    {hasAttendance ? (
+                      <>
+                        <UserCheck className="h-3 w-3" />
+                        {attendanceInfo.present}/{attendanceInfo.total}
+                      </>
+                    ) : (
+                      <>
+                        <UserX className="h-3 w-3" />
+                        Brak obecności
+                      </>
+                    )}
                   </span>
                 )}
                 

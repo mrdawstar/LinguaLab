@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Check, X, MessageSquare, Loader2, Users } from 'lucide-react';
 import {
@@ -43,6 +44,7 @@ interface AttendanceDialogProps {
 
 export function AttendanceDialog({ open, onOpenChange, lesson, onSuccess }: AttendanceDialogProps) {
   const queryClient = useQueryClient();
+  const { schoolId } = useAuth();
   const [attendanceData, setAttendanceData] = useState<Record<string, { attended: boolean; comment: string }>>({});
 
   const parseJwt = (token: string) => {
@@ -232,6 +234,11 @@ export function AttendanceDialog({ open, onOpenChange, lesson, onSuccess }: Atte
       queryClient.invalidateQueries({ queryKey: ['packages'] });
       queryClient.invalidateQueries({ queryKey: ['student-packages'] });
       queryClient.invalidateQueries({ queryKey: ['students'] });
+      // Invaliduj lessons query aby admin/manager widział zaktualizowaną obecność
+      if (schoolId) {
+        queryClient.invalidateQueries({ queryKey: ['lessons', schoolId] });
+        queryClient.invalidateQueries({ queryKey: ['upcomingLessons', schoolId] });
+      }
       onSuccess?.();
       onOpenChange(false);
     },

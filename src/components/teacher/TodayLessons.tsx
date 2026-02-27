@@ -410,6 +410,16 @@ export function TodayLessons() {
               queryKey: ['actualRevenue', schoolId],
               refetchType: 'none'
             });
+            // Invaliduj lessons query aby admin/manager widział zaktualizowaną obecność
+            queryClient.invalidateQueries({ 
+              queryKey: ['lessons', schoolId],
+              refetchType: 'none'
+            });
+            // Invaliduj też upcomingLessons na dashboardzie
+            queryClient.invalidateQueries({ 
+              queryKey: ['upcomingLessons', schoolId],
+              refetchType: 'none'
+            });
           }
         }, 0);
         

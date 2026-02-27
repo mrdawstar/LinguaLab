@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { format, startOfWeek, addDays, isSameDay, parseISO } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Plus, Clock, Loader2, Calendar, CheckCircle2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Clock, Loader2, Calendar, CheckCircle2, UserCheck, UserX, Users } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { LessonDialogSupabase } from '@/components/admin/LessonDialogSupabase';
@@ -253,6 +253,8 @@ export default function SchedulePage() {
               const startTime = lesson.start_time.substring(0, 5);
               const endTime = lesson.end_time.substring(0, 5);
               const isCompleted = lesson.is_completed;
+              const attendanceInfo = (lesson as any).attendance_info;
+              const hasAttendance = attendanceInfo?.hasAttendance || false;
               const isCurrentLesson = isSameDay(viewDate, now) && (() => {
                 const start = new Date(`${format(viewDate, 'yyyy-MM-dd')}T${lesson.start_time}`);
                 const end = new Date(`${format(viewDate, 'yyyy-MM-dd')}T${lesson.end_time}`);
@@ -279,6 +281,8 @@ export default function SchedulePage() {
                       startTime,
                       endTime,
                       isCompleted,
+                      attendanceInfo,
+                      attendanceRecords: (lesson as any).attendance_records,
                     });
                   }}
                 >
@@ -320,10 +324,24 @@ export default function SchedulePage() {
                           </p>
                         )}
                       </div>
-                      <div
-                        className="h-3 w-3 rounded-full shrink-0 mt-1.5"
-                        style={{ backgroundColor: teacher?.calendar_color || '#3b82f6' }}
-                      />
+                      <div className="flex items-center gap-2 shrink-0">
+                        {hasAttendance ? (
+                          <div className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5" title="Obecność zaznaczona">
+                            <UserCheck className="h-3.5 w-3.5 text-emerald-600" />
+                            <span className="text-[10px] font-medium text-emerald-600">
+                              {attendanceInfo.presentCount}/{attendanceInfo.totalStudents}
+                            </span>
+                          </div>
+                        ) : isCompleted ? (
+                          <div className="flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5" title="Brak zaznaczonej obecności">
+                            <UserX className="h-3.5 w-3.5 text-amber-600" />
+                          </div>
+                        ) : null}
+                        <div
+                          className="h-3 w-3 rounded-full"
+                          style={{ backgroundColor: teacher?.calendar_color || '#3b82f6' }}
+                        />
+                      </div>
                     </div>
                     {group && (
                       <div className="mt-2 flex items-center gap-2">
@@ -452,13 +470,14 @@ export default function SchedulePage() {
                           const student = lesson.student_id ? getStudent(lesson.student_id) : null;
                           const group = lesson.group_id ? getGroup(lesson.group_id) : null;
                           const isCompleted = lesson.is_completed;
+                          const attendanceInfo = (lesson as any).attendance_info;
+                          const hasAttendance = attendanceInfo?.hasAttendance || false;
                           const isCurrentLesson = isSameDay(day, now) && (() => {
                             const start = new Date(`${format(day, 'yyyy-MM-dd')}T${lesson.start_time}`);
                             const end = new Date(`${format(day, 'yyyy-MM-dd')}T${lesson.end_time}`);
                             return now >= start && now < end;
                           })();
                           
-                          // Format time to show exact minutes (e.g., 9:08 - 10:08)
                           const startTime = lesson.start_time.substring(0, 5);
                           const endTime = lesson.end_time.substring(0, 5);
                           
@@ -482,14 +501,28 @@ export default function SchedulePage() {
                                   startTime,
                                   endTime,
                                   isCompleted,
+                                  attendanceInfo,
+                                  attendanceRecords: (lesson as any).attendance_records,
                                 });
                               }}
                             >
-                              {isCompleted && (
-                                <CheckCircle2 className="absolute top-1 right-1 h-3 w-3" />
-                              )}
+                              <div className="absolute top-1 right-1 flex items-center gap-0.5">
+                                {hasAttendance ? (
+                                  <div className="flex items-center gap-0.5 rounded bg-white/20 px-1 py-0.5" title="Obecność zaznaczona">
+                                    <UserCheck className="h-2.5 w-2.5" />
+                                    <span className="text-[9px]">{attendanceInfo.presentCount}/{attendanceInfo.totalStudents}</span>
+                                  </div>
+                                ) : isCompleted ? (
+                                  <div className="rounded bg-amber-500/80 px-1 py-0.5" title="Brak zaznaczonej obecności">
+                                    <UserX className="h-2.5 w-2.5" />
+                                  </div>
+                                ) : null}
+                                {isCompleted && (
+                                  <CheckCircle2 className="h-3 w-3" />
+                                )}
+                              </div>
                               <div className={cn(
-                                "font-medium truncate",
+                                "font-medium truncate pr-8",
                                 isCompleted && "line-through"
                               )}>
                                 {group ? group.name : student?.name || lesson.title}
@@ -584,6 +617,82 @@ export default function SchedulePage() {
                     <span className="text-muted-foreground">Uczeń</span>
                     <span className="font-semibold">{selectedLesson.student.name}</span>
                   </div>
+                )}
+              </div>
+              
+              {/* Attendance Section */}
+              <div className="rounded-2xl border border-border/60 bg-background/80 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-semibold flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Obecność
+                  </h4>
+                  {selectedLesson.attendanceInfo?.hasAttendance ? (
+                    <span className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-600">
+                      <UserCheck className="h-3.5 w-3.5" />
+                      Zaznaczona
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-600">
+                      <UserX className="h-3.5 w-3.5" />
+                      Nie zaznaczona
+                    </span>
+                  )}
+                </div>
+                
+                {selectedLesson.attendanceInfo?.hasAttendance ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Obecnych:</span>
+                      <span className="font-medium text-emerald-600">
+                        {selectedLesson.attendanceInfo.presentCount} / {selectedLesson.attendanceInfo.totalStudents}
+                      </span>
+                    </div>
+                    {selectedLesson.attendanceInfo.absentCount > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Nieobecnych:</span>
+                        <span className="font-medium text-red-500">
+                          {selectedLesson.attendanceInfo.absentCount}
+                        </span>
+                      </div>
+                    )}
+                    
+                    {selectedLesson.attendanceRecords && selectedLesson.attendanceRecords.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
+                        <p className="text-xs text-muted-foreground font-medium">Lista uczniów:</p>
+                        {selectedLesson.attendanceRecords.map((record: any) => (
+                          <div 
+                            key={record.student_id} 
+                            className="flex items-center justify-between text-sm py-1"
+                          >
+                            <span className="truncate">{record.student_name || 'Nieznany uczeń'}</span>
+                            <span className={cn(
+                              "flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full",
+                              record.attended 
+                                ? "bg-emerald-500/10 text-emerald-600" 
+                                : "bg-red-500/10 text-red-500"
+                            )}>
+                              {record.attended ? (
+                                <>
+                                  <UserCheck className="h-3 w-3" />
+                                  Obecny
+                                </>
+                              ) : (
+                                <>
+                                  <UserX className="h-3 w-3" />
+                                  Nieobecny
+                                </>
+                              )}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Nauczyciel nie zaznaczył jeszcze obecności dla tej lekcji.
+                  </p>
                 )}
               </div>
             </div>

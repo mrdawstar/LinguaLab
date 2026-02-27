@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react';
 import { format, startOfWeek, addDays, isSameDay } from 'date-fns';
 import { pl } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Plus, Clock, Loader2, CheckCircle2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Clock, Loader2, CheckCircle2, UserCheck, UserX, Users } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { useLessons } from '@/hooks/useLessons';
@@ -236,6 +236,8 @@ export default function ManagerSchedulePage() {
               const student = lesson.student_id ? getStudent(lesson.student_id) : null;
               const group = lesson.group_id ? getGroup(lesson.group_id) : null;
               const isCompleted = lesson.is_completed;
+              const attendanceInfo = (lesson as any).attendance_info;
+              const hasAttendance = attendanceInfo?.hasAttendance || false;
               const isCurrentLesson = isSameDay(new Date(lesson.date), now) && (() => {
                 const start = new Date(`${lesson.date}T${lesson.start_time}`);
                 const end = new Date(`${lesson.date}T${lesson.end_time}`);
@@ -256,6 +258,8 @@ export default function ManagerSchedulePage() {
                       teacher,
                       student,
                       group,
+                      attendanceInfo,
+                      attendanceRecords: (lesson as any).attendance_records,
                     });
                   }}
                 >
@@ -270,25 +274,47 @@ export default function ManagerSchedulePage() {
                     <span className="text-xs text-muted-foreground">{lesson.end_time.slice(0, 5)}</span>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <h4 className={cn(
-                        "font-semibold truncate",
-                        isCompleted && "text-emerald-700 line-through"
-                      )}>
-                        {group ? group.name : student?.name || lesson.title}
-                      </h4>
-                      {isCompleted && (
-                        <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                      )}
-                      {isCurrentLesson && (
-                        <span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold text-rose-600">
-                          Teraz
-                        </span>
-                      )}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className={cn(
+                            "font-semibold truncate",
+                            isCompleted && "text-emerald-700 line-through"
+                          )}>
+                            {group ? group.name : student?.name || lesson.title}
+                          </h4>
+                          {isCompleted && (
+                            <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                          )}
+                          {isCurrentLesson && (
+                            <span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold text-rose-600">
+                              Teraz
+                            </span>
+                          )}
+                        </div>
+                        {teacher && (
+                          <p className="text-sm text-muted-foreground truncate">{teacher.name}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {hasAttendance ? (
+                          <div className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5" title="Obecność zaznaczona">
+                            <UserCheck className="h-3.5 w-3.5 text-emerald-600" />
+                            <span className="text-[10px] font-medium text-emerald-600">
+                              {attendanceInfo.presentCount}/{attendanceInfo.totalStudents}
+                            </span>
+                          </div>
+                        ) : isCompleted ? (
+                          <div className="flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5" title="Brak zaznaczonej obecności">
+                            <UserX className="h-3.5 w-3.5 text-amber-600" />
+                          </div>
+                        ) : null}
+                        <div
+                          className="h-3 w-3 rounded-full"
+                          style={{ backgroundColor: teacher?.calendar_color || '#10b981' }}
+                        />
+                      </div>
                     </div>
-                    {teacher && (
-                      <p className="text-sm text-muted-foreground truncate">{teacher.name}</p>
-                    )}
                   </div>
                 </div>
               );
@@ -360,6 +386,8 @@ export default function ManagerSchedulePage() {
                           const teacher = getTeacher(lesson.teacher_id);
                           const student = lesson.student_id ? getStudent(lesson.student_id) : null;
                           const group = lesson.group_id ? getGroup(lesson.group_id) : null;
+                          const attendanceInfo = (lesson as any).attendance_info;
+                          const hasAttendance = attendanceInfo?.hasAttendance || false;
                           const isCurrentLesson = isSameDay(day, now) && (() => {
                             const start = new Date(`${format(day, 'yyyy-MM-dd')}T${lesson.start_time}`);
                             const end = new Date(`${format(day, 'yyyy-MM-dd')}T${lesson.end_time}`);
@@ -371,7 +399,7 @@ export default function ManagerSchedulePage() {
                             <div
                               key={lesson.id}
                               className={cn(
-                                "mb-1 rounded-lg p-1.5 sm:p-2 text-xs text-white",
+                                "mb-1 rounded-lg p-1.5 sm:p-2 text-xs text-white relative",
                                 isCurrentLesson && "ring-2 ring-rose-400 ring-offset-1 ring-offset-background",
                                 isCompleted && "opacity-60"
                               )}
@@ -384,10 +412,27 @@ export default function ManagerSchedulePage() {
                                   teacher,
                                   student,
                                   group,
+                                  attendanceInfo,
+                                  attendanceRecords: (lesson as any).attendance_records,
                                 });
                               }}
                             >
-                              <div className="font-medium truncate text-[10px] sm:text-xs">
+                              <div className="absolute top-1 right-1 flex items-center gap-0.5">
+                                {hasAttendance ? (
+                                  <div className="flex items-center gap-0.5 rounded bg-white/20 px-1 py-0.5" title="Obecność zaznaczona">
+                                    <UserCheck className="h-2.5 w-2.5" />
+                                    <span className="text-[9px]">{attendanceInfo.presentCount}/{attendanceInfo.totalStudents}</span>
+                                  </div>
+                                ) : isCompleted ? (
+                                  <div className="rounded bg-amber-500/80 px-1 py-0.5" title="Brak zaznaczonej obecności">
+                                    <UserX className="h-2.5 w-2.5" />
+                                  </div>
+                                ) : null}
+                                {isCompleted && (
+                                  <CheckCircle2 className="h-3 w-3" />
+                                )}
+                              </div>
+                              <div className="font-medium truncate text-[10px] sm:text-xs pr-8">
                                 {group ? group.name : student?.name || lesson.title}
                               </div>
                               <div className="opacity-80 text-[9px] sm:text-[10px]">
@@ -480,6 +525,82 @@ export default function ManagerSchedulePage() {
                     <span className="text-muted-foreground">Uczeń</span>
                     <span className="font-semibold">{selectedLesson.student.name}</span>
                   </div>
+                )}
+              </div>
+              
+              {/* Attendance Section */}
+              <div className="rounded-2xl border border-border/60 bg-background/80 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-semibold flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Obecność
+                  </h4>
+                  {selectedLesson.attendanceInfo?.hasAttendance ? (
+                    <span className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-600">
+                      <UserCheck className="h-3.5 w-3.5" />
+                      Zaznaczona
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-600">
+                      <UserX className="h-3.5 w-3.5" />
+                      Nie zaznaczona
+                    </span>
+                  )}
+                </div>
+                
+                {selectedLesson.attendanceInfo?.hasAttendance ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Obecnych:</span>
+                      <span className="font-medium text-emerald-600">
+                        {selectedLesson.attendanceInfo.presentCount} / {selectedLesson.attendanceInfo.totalStudents}
+                      </span>
+                    </div>
+                    {selectedLesson.attendanceInfo.absentCount > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Nieobecnych:</span>
+                        <span className="font-medium text-red-500">
+                          {selectedLesson.attendanceInfo.absentCount}
+                        </span>
+                      </div>
+                    )}
+                    
+                    {selectedLesson.attendanceRecords && selectedLesson.attendanceRecords.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
+                        <p className="text-xs text-muted-foreground font-medium">Lista uczniów:</p>
+                        {selectedLesson.attendanceRecords.map((record: any) => (
+                          <div 
+                            key={record.student_id} 
+                            className="flex items-center justify-between text-sm py-1"
+                          >
+                            <span className="truncate">{record.student_name || 'Nieznany uczeń'}</span>
+                            <span className={cn(
+                              "flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full",
+                              record.attended 
+                                ? "bg-emerald-500/10 text-emerald-600" 
+                                : "bg-red-500/10 text-red-500"
+                            )}>
+                              {record.attended ? (
+                                <>
+                                  <UserCheck className="h-3 w-3" />
+                                  Obecny
+                                </>
+                              ) : (
+                                <>
+                                  <UserX className="h-3 w-3" />
+                                  Nieobecny
+                                </>
+                              )}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Nauczyciel nie zaznaczył jeszcze obecności dla tej lekcji.
+                  </p>
                 )}
               </div>
             </div>
