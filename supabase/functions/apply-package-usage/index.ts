@@ -107,7 +107,7 @@ serve(async (req) => {
 
     const { data: lesson } = await supabase
       .from("lessons")
-      .select("id, school_id")
+      .select("id, school_id, date")
       .eq("id", lesson_id)
       .single();
 
@@ -173,6 +173,31 @@ serve(async (req) => {
       return total > 0 ? toNumber(pkg.total_amount) / total : 0;
     };
 
+    const recomputePackageUsage = async (packageId: string) => {
+      const { data: pkg } = await supabase
+        .from("package_purchases")
+        .select("id, lessons_total, hours_purchased, total_amount, price_per_lesson")
+        .eq("id", packageId)
+        .single();
+
+      if (!pkg?.id) return;
+
+      const { count } = await supabase
+        .from("lesson_attendance")
+        .select("id", { count: "exact", head: true })
+        .eq("package_purchase_id", packageId)
+        .eq("attended", true);
+
+      const used = typeof count === "number" ? count : 0;
+      const total = getLessonsTotal(pkg);
+      const status = total > 0 && used >= total ? "exhausted" : "active";
+
+      await supabase
+        .from("package_purchases")
+        .update({ lessons_used: used, status })
+        .eq("id", packageId);
+    };
+
     /* =========================
        UNMARK ATTENDANCE
        ========================= */
@@ -185,26 +210,6 @@ serve(async (req) => {
           { status: 200, headers: corsHeaders }
         );
       }
-      if (existingPackageId) {
-        const { data: pkg } = await supabase
-          .from("package_purchases")
-          .select("id, lessons_used, lessons_total, hours_purchased")
-          .eq("id", existingPackageId)
-          .single();
-
-        if (pkg?.id) {
-          const newUsed = Math.max(0, toNumber(pkg.lessons_used) - 1);
-          const total = getLessonsTotal(pkg);
-          const status =
-            total > 0 && newUsed >= total ? "exhausted" : "active";
-
-          await supabase
-            .from("package_purchases")
-            .update({ lessons_used: newUsed, status })
-            .eq("id", pkg.id);
-        }
-      }
-
       if (attendanceId) {
         await supabase
           .from("lesson_attendance")
@@ -213,6 +218,10 @@ serve(async (req) => {
             revenue_amount: null,
           })
           .eq("id", attendanceId);
+      }
+
+      if (existingPackageId) {
+        await recomputePackageUsage(existingPackageId);
       }
 
       return new Response(
@@ -243,43 +252,44 @@ serve(async (req) => {
     const { data: packages } = await supabase
       .from("package_purchases")
       .select(
-        "id, lessons_total, lessons_used, hours_purchased, total_amount, price_per_lesson, status, created_at"
+        "id, lessons_total, hours_purchased, total_amount, price_per_lesson, status, purchase_date"
       )
       .eq("school_id", profile.school_id)
-      .eq("student_id", student_id) // ← KLUCZOWE
+      .eq("student_id", student_id)
       .or("status.is.null,status.eq.active")
-      .order("created_at", { ascending: true });
+      .lte("purchase_date", lesson.date)
+      .order("purchase_date", { ascending: true });
 
-    console.log("apply-package-usage: packages found", {
-      count: packages?.length ?? 0,
-      student_id,
-    });
+    let activePackage: any = null;
 
-    const activePackage = (packages || []).find((pkg: any) => {
+    for (const pkg of packages || []) {
       const total = getLessonsTotal(pkg);
-      return total > 0 && toNumber(pkg.lessons_used) < total;
-    });
+      if (total <= 0) continue;
+
+      const { count } = await supabase
+        .from("lesson_attendance")
+        .select("id", { count: "exact", head: true })
+        .eq("package_purchase_id", pkg.id)
+        .eq("attended", true);
+
+      const used = typeof count === "number" ? count : 0;
+      if (used < total) {
+        activePackage = pkg;
+        break;
+      }
+    }
 
     if (!activePackage) {
       console.warn("apply-package-usage: missing package", {
         student_id,
         school_id: profile.school_id,
+        lesson_date: lesson.date,
       });
       return new Response(
         JSON.stringify({ ok: true, missing_package: true }),
         { status: 200, headers: corsHeaders }
       );
     }
-
-    const newUsed = toNumber(activePackage.lessons_used) + 1;
-    const total = getLessonsTotal(activePackage);
-    const status =
-      newUsed >= total ? "exhausted" : "active";
-
-    await supabase
-      .from("package_purchases")
-      .update({ lessons_used: newUsed, status })
-      .eq("id", activePackage.id);
 
     if (attendanceId) {
       await supabase
@@ -290,10 +300,12 @@ serve(async (req) => {
         })
         .eq("id", attendanceId);
     }
+
+    await recomputePackageUsage(activePackage.id);
+
     console.log("apply-package-usage: updated", {
       attendance_id: attendanceId,
       package_id: activePackage.id,
-      lessons_used: newUsed,
     });
 
     return new Response(

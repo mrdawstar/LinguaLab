@@ -11,6 +11,13 @@ import { useStudents } from '@/hooks/useStudents';
 import { useGroups } from '@/hooks/useGroups';
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 /**
  * Helper function to calculate relevant hours for the week
@@ -74,6 +81,7 @@ export default function SchedulePage() {
   const touchStartX = useRef<number | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<any | null>(null);
   const [autoScrollEnabled, setAutoScrollEnabled] = useState(false);
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('all');
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60000);
@@ -94,8 +102,16 @@ export default function SchedulePage() {
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
+  const filteredLessons = useMemo(
+    () =>
+      selectedTeacherId === 'all'
+        ? lessons
+        : lessons.filter((lesson) => lesson.teacher_id === selectedTeacherId),
+    [lessons, selectedTeacherId]
+  );
+
   // Calculate relevant hours for the current week using useMemo to optimize performance
-  const hours = useMemo(() => getRelevantHours(lessons), [lessons]);
+  const hours = useMemo(() => getRelevantHours(filteredLessons), [filteredLessons]);
 
   const prevWeek = () => setCurrentDate(addDays(currentDate, -7));
   const nextWeek = () => setCurrentDate(addDays(currentDate, 7));
@@ -107,7 +123,7 @@ export default function SchedulePage() {
 
   // Group lessons by date and hour slot for display
   const getLessonsForSlot = (date: Date, hour: number) => {
-    return lessons.filter((lesson) => {
+    return filteredLessons.filter((lesson) => {
       const lessonDate = parseISO(lesson.date);
       const lessonHour = parseInt(lesson.start_time.split(':')[0]);
       return isSameDay(lessonDate, date) && lessonHour === hour;
@@ -116,7 +132,7 @@ export default function SchedulePage() {
 
   // Get all lessons for a specific day
   const getLessonsForDay = (date: Date) => {
-    return lessons
+    return filteredLessons
       .filter((lesson) => isSameDay(parseISO(lesson.date), date))
       .sort((a, b) => a.start_time.localeCompare(b.start_time));
   };
@@ -388,16 +404,34 @@ export default function SchedulePage() {
               {format(addDays(weekStart, 6), 'd MMM yyyy', { locale: pl })}
             </h2>
           </div>
-          <Button
-            onClick={() => {
-              setSelectedSlot(null);
-              setDialogOpen(true);
-            }}
-            className="rounded-xl bg-gradient-primary h-9 sm:h-10 text-sm hidden lg:flex"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Dodaj zajęcia
-          </Button>
+          <div className="flex items-center gap-3">
+            <Select
+              value={selectedTeacherId}
+              onValueChange={(value) => setSelectedTeacherId(value)}
+            >
+              <SelectTrigger className="w-44 rounded-xl h-9 sm:h-10 text-sm">
+                <SelectValue placeholder="Wszyscy nauczyciele" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Wszyscy nauczyciele</SelectItem>
+                {teachers.map((teacher) => (
+                  <SelectItem key={teacher.id} value={teacher.id}>
+                    {teacher.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              onClick={() => {
+                setSelectedSlot(null);
+                setDialogOpen(true);
+              }}
+              className="rounded-xl bg-gradient-primary h-9 sm:h-10 text-sm hidden lg:flex"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Dodaj zajęcia
+            </Button>
+          </div>
         </div>
 
         {/* Mobile Week Range */}

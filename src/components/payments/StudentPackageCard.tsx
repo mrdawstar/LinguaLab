@@ -32,14 +32,14 @@ export function StudentPackageCard({ pkg, showFinancials = true, onEdit }: Stude
     active: 'border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-900/10',
     warning: 'border-amber-500/30 bg-amber-50/50 dark:bg-amber-900/10',
     exhausted: 'border-rose-500/30 bg-rose-50/50 dark:bg-rose-900/10',
-    expired: 'border-muted bg-muted/30',
+    expired: 'border-rose-500/30 bg-rose-50/50 dark:bg-rose-900/10',
   };
 
   const progressColors: Record<VisualStatus, string> = {
     active: 'bg-emerald-500',
     warning: 'bg-amber-500',
     exhausted: 'bg-rose-500',
-    expired: 'bg-muted-foreground',
+    expired: 'bg-rose-500',
   };
 
   // Determine visual status
@@ -83,7 +83,7 @@ export function StudentPackageCard({ pkg, showFinancials = true, onEdit }: Stude
             visualStatus === 'active' && 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400',
             visualStatus === 'warning' && 'bg-amber-500/20 text-amber-700 dark:text-amber-400',
             visualStatus === 'exhausted' && 'bg-rose-500/20 text-rose-700 dark:text-rose-400',
-            visualStatus === 'expired' && 'bg-muted text-muted-foreground'
+            visualStatus === 'expired' && 'bg-rose-500/20 text-rose-700 dark:text-rose-400'
           )}>
             {visualStatus === 'active' && 'Aktywny'}
             {visualStatus === 'warning' && 'Kończy się'}

@@ -63,7 +63,7 @@ const allLanguages = ['Angielski', 'Niemiecki', 'Hiszpański', 'Francuski', 'Wł
 const colors = ['#2563eb', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4'];
 
 export function TeacherDialog({ open, onOpenChange, teacher }: TeacherDialogProps) {
-  const { addTeacher, updateTeacher } = useTeachers();
+  const { addTeacher, updateTeacher, teachers } = useTeachers();
   const { limits, plan, recommendedUpgradePlan } = useSubscriptionLimits();
   const [limitDialogOpen, setLimitDialogOpen] = useState(false);
 
@@ -92,6 +92,18 @@ export function TeacherDialog({ open, onOpenChange, teacher }: TeacherDialogProp
         calendar_color: teacher.calendar_color || colors[0],
       });
     } else {
+      const usedColors = new Set(
+        (teachers || [])
+          .map((t) => t.calendar_color)
+          .filter((c): c is string => !!c)
+      );
+      const available = colors.filter((c) => !usedColors.has(c));
+      const fallbackColor =
+        available[0] ||
+        `#${Math.floor(Math.random() * 0xffffff)
+          .toString(16)
+          .padStart(6, '0')}`;
+
       form.reset({
         name: '',
         email: '',
@@ -99,10 +111,10 @@ export function TeacherDialog({ open, onOpenChange, teacher }: TeacherDialogProp
         instagram: '',
         meeting_link: '',
         languages: [],
-        calendar_color: colors[Math.floor(Math.random() * colors.length)],
+        calendar_color: fallbackColor,
       });
     }
-  }, [teacher, form]);
+  }, [teacher, form, teachers]);
 
   const onSubmit = (values: TeacherFormValues) => {
     // BŁĄD #2 - poprawiono: sprawdź limit tylko przy dodawaniu nowego nauczyciela
@@ -250,30 +262,57 @@ export function TeacherDialog({ open, onOpenChange, teacher }: TeacherDialogProp
                   <FormItem>
                     <FormLabel>Kolor w kalendarzu</FormLabel>
                     <div className="grid grid-cols-5 gap-2 sm:grid-cols-6">
-                      {colors.map((color) => {
+                      {colors.map((color, index) => {
                         const isActive = field.value === color;
-                        return (
-                          <button
-                            key={color}
-                            type="button"
-                            onClick={() => field.onChange(color)}
-                            className={cn(
-                              'group relative h-10 w-10 rounded-2xl border border-border/60 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md',
-                              isActive && 'ring-2 ring-primary ring-offset-2'
-                            )}
-                            style={{ backgroundColor: color }}
-                            aria-label={`Kolor ${color}`}
-                          >
-                            <span className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/20 to-black/10" />
-                            <span
+                        const isLast = index === colors.length - 1;
+
+                        if (!isLast) {
+                          return (
+                            <button
+                              key={color}
+                              type="button"
+                              onClick={() => field.onChange(color)}
                               className={cn(
-                                'absolute inset-0 flex items-center justify-center text-white opacity-0 transition-opacity',
-                                isActive && 'opacity-100'
+                                'group relative h-10 w-10 rounded-2xl border border-border/60 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md',
+                                isActive && 'ring-2 ring-primary ring-offset-2'
                               )}
+                              style={{ backgroundColor: color }}
+                              aria-label={`Kolor ${color}`}
                             >
-                              <Check className="h-4 w-4 drop-shadow" />
+                              <span className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/20 to-black/10" />
+                              <span
+                                className={cn(
+                                  'absolute inset-0 flex items-center justify-center text-white opacity-0 transition-opacity',
+                                  isActive && 'opacity-100'
+                                )}
+                              >
+                                <Check className="h-4 w-4 drop-shadow" />
+                              </span>
+                            </button>
+                          );
+                        }
+
+                        // Last tile replaced with native color picker bound to field value
+                        return (
+                          <label
+                            key="custom-color-picker"
+                            className={cn(
+                              'group relative flex h-10 w-10 items-center justify-center rounded-2xl border border-dashed border-border/60 bg-background text-xs font-medium shadow-sm cursor-pointer',
+                              'hover:-translate-y-0.5 hover:shadow-md'
+                            )}
+                          >
+                            <span className="absolute inset-0 rounded-2xl bg-gradient-to-br from-slate-50/40 to-slate-900/5 dark:from-slate-900/40 dark:to-black/40" />
+                            <span className="relative z-10 text-[10px] text-muted-foreground">
+                              HEX
                             </span>
-                          </button>
+                            <input
+                              type="color"
+                              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                              value={field.value || '#2563eb'}
+                              onChange={(e) => field.onChange(e.target.value)}
+                              aria-label="Własny kolor"
+                            />
+                          </label>
                         );
                       })}
                     </div>
