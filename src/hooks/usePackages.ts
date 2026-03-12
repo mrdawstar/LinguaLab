@@ -93,6 +93,15 @@ export function usePackages() {
       queryKey: ['student-packages', studentId],
       queryFn: async () => {
         if (!studentId) return [];
+
+        // Ensure historical attendance is taken into account when viewing a student's packages
+        try {
+          await supabase.functions.invoke('recalculate-package-usage', {
+            body: { student_id: studentId },
+          });
+        } catch (error) {
+          console.error('Error recalculating package usage for student:', error);
+        }
         
         const { data, error } = await supabase
           .from('package_purchases')
@@ -143,6 +152,15 @@ export function usePackages() {
       
       if (error) throw error;
       
+      // After creating, recalculate usage using historical attendance
+      try {
+        await supabase.functions.invoke('recalculate-package-usage', {
+          body: { package_id: result.id },
+        });
+      } catch (recalcError) {
+        console.error('Error recalculating package usage after create:', recalcError);
+      }
+
       // Update student payment status to active (they just paid)
       const { error: studentError } = await supabase
         .from('students')
@@ -182,6 +200,16 @@ export function usePackages() {
         .single();
       
       if (error) throw error;
+
+      // After updating, recalculate usage using historical attendance
+      try {
+        await supabase.functions.invoke('recalculate-package-usage', {
+          body: { package_id: result.id },
+        });
+      } catch (recalcError) {
+        console.error('Error recalculating package usage after update:', recalcError);
+      }
+
       return result;
     },
     onSuccess: () => {

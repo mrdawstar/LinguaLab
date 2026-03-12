@@ -224,6 +224,19 @@ export function TeacherLessonEditDialog({
     setIsDeleting(true);
     
     try {
+      const { data: attendanceRows, error: attendanceFetchError } = await supabase
+        .from('lesson_attendance')
+        .select('student_id')
+        .eq('lesson_id', lesson.id);
+
+      if (attendanceFetchError) {
+        console.error('Error fetching attendance before lesson delete:', attendanceFetchError);
+      }
+
+      const affectedStudentIds = Array.from(
+        new Set((attendanceRows || []).map((row) => row.student_id).filter(Boolean))
+      );
+
       // First delete attendance records for this lesson
       const { error: attendanceError } = await supabase
         .from('lesson_attendance')
@@ -242,6 +255,17 @@ export function TeacherLessonEditDialog({
         .eq('id', lesson.id);
 
       if (error) throw error;
+
+      for (const studentId of affectedStudentIds) {
+        try {
+          await supabase.functions.invoke('recalculate-package-usage', {
+            body: { student_id: studentId },
+          });
+        } catch (recalcError) {
+          console.error('Error recalculating package usage after lesson delete:', recalcError);
+        }
+      }
+
       toast.success('Zajęcia zostały usunięte');
       invalidateQueries();
       onSuccess();

@@ -48,6 +48,14 @@ export function StudentPaymentHistory({
   const { data: packages = [], isLoading } = useQuery({
     queryKey: ['student-packages', studentId],
     queryFn: async () => {
+      try {
+        await supabase.functions.invoke('recalculate-package-usage', {
+          body: { student_id: studentId },
+        });
+      } catch (error) {
+        console.error('Error recalculating package usage for history:', error);
+      }
+
       const { data, error } = await supabase
         .from('package_purchases')
         .select('*')

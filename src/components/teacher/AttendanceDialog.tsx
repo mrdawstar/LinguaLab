@@ -58,7 +58,12 @@ export function AttendanceDialog({ open, onOpenChange, lesson, onSuccess }: Atte
     }
   };
 
-  const callApplyPackageUsage = async (lessonId: string, studentId: string, attended: boolean) => {
+  const callApplyPackageUsage = async (
+    lessonId: string,
+    studentId: string,
+    attended: boolean,
+    attendanceId?: string | null
+  ) => {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const supabaseKey =
       import.meta.env.VITE_SUPABASE_ANON_KEY ||
@@ -104,6 +109,7 @@ export function AttendanceDialog({ open, onOpenChange, lesson, onSuccess }: Atte
           lesson_id: lessonId,
           student_id: studentId,
           attended,
+          attendance_id: attendanceId || null,
         }),
       });
 
@@ -115,12 +121,19 @@ export function AttendanceDialog({ open, onOpenChange, lesson, onSuccess }: Atte
       }
     }
 
+    const responseText = await response.text();
+    let responseJson: any = null;
+    try {
+      responseJson = responseText ? JSON.parse(responseText) : null;
+    } catch {
+      responseJson = null;
+    }
+
     if (!response.ok) {
-      const errText = await response.text();
       const tokenInfo = accessToken ? parseJwt(accessToken) : null;
       console.error('apply-package-usage failed', {
         status: response.status,
-        response: errText,
+        response: responseText,
         supabaseUrl,
         tokenIss: tokenInfo?.iss,
         tokenExp: tokenInfo?.exp,
@@ -128,6 +141,12 @@ export function AttendanceDialog({ open, onOpenChange, lesson, onSuccess }: Atte
       });
       return false;
     }
+
+    if (responseJson?.missing_package) {
+      toast.error('Brak aktywnego pakietu dla ucznia');
+      return false;
+    }
+
     return true;
   };
 
@@ -197,6 +216,7 @@ export function AttendanceDialog({ open, onOpenChange, lesson, onSuccess }: Atte
       for (const student of students) {
         const data = attendanceData[student.id];
         const existing = existingAttendance.find(a => a.student_id === student.id);
+        let finalAttendanceId: string | null = existing?.id ?? null;
 
         if (existing) {
           // Update existing record
@@ -210,19 +230,27 @@ export function AttendanceDialog({ open, onOpenChange, lesson, onSuccess }: Atte
           if (error) throw error;
         } else {
           // Insert new record
-          const { error } = await supabase
+          const { data: insertedAttendance, error } = await supabase
             .from('lesson_attendance')
             .insert({
               lesson_id: lesson.id,
               student_id: student.id,
               attended: data.attended,
               comment: data.comment || null,
-            });
+            })
+            .select('id')
+            .single();
           if (error) throw error;
+          finalAttendanceId = insertedAttendance?.id ?? null;
         }
 
         // Apply package usage update via Edge Function (server-side)
-        const packageUpdated = await callApplyPackageUsage(lesson.id, student.id, data.attended);
+        const packageUpdated = await callApplyPackageUsage(
+          lesson.id,
+          student.id,
+          data.attended,
+          finalAttendanceId
+        );
         if (!packageUpdated) {
           toast.error('Nie udało się zaktualizować pakietu');
         }
