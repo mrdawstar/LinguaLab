@@ -41,6 +41,10 @@ const ROLE_PRIORITY: UserRole[] = ['admin', 'manager', 'teacher'];
 const BOOTSTRAP_COOLDOWN_MS = 30_000;
 let lastBootstrapAt = 0;
 
+const authDebug = (message: string, data?: Record<string, unknown>) => {
+  console.info(`[auth] ${message}`, data ?? {});
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -62,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!supabaseUrl || !supabaseKey) return;
 
     try {
+      authDebug('bootstrap-user:start');
       const response = await fetch(`${supabaseUrl}/functions/v1/bootstrap-user`, {
         method: 'POST',
         headers: {
@@ -76,10 +81,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!response.ok && response.status !== 401) {
         const errorText = await response.text().catch(() => 'Unknown error');
         console.warn('bootstrap-user failed:', response.status, errorText);
+      } else {
+        authDebug('bootstrap-user:done', { status: response.status });
       }
     } catch (error) {
       // Silently ignore all errors - bootstrap is not critical for login
       // Network errors and other errors are ignored to prevent console spam
+      console.warn('bootstrap-user exception:', error);
     }
   };
 
@@ -90,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // #endregion
     try {
       setIsLoading(true);
+      authDebug('fetchUserData:start', { userId });
 
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
@@ -105,6 +114,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         throw profileError;
       }
+
+      authDebug('fetchUserData:profile', {
+        userId,
+        found: !!profileData,
+        profileId: profileData?.id ?? null,
+        schoolId: profileData?.school_id ?? null,
+        profileError: profileError?.message ?? null,
+      });
+
       setProfile(profileData ?? null);
       setSchoolId(profileData?.school_id ?? null);
       // #region agent log
@@ -129,17 +147,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       let resolvedRole =
         ROLE_PRIORITY.find((r) => roles.includes(r)) ??
         (roles[0] ?? null);
+
+      authDebug('fetchUserData:roles', {
+        userId,
+        roles,
+        resolvedRole,
+        roleError: roleError?.message ?? null,
+      });
       // #region agent log
       fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:roles',message:'Roles loaded',data:{userId, rolesCount: (roleRows ?? []).length, resolvedRole},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
       // #endregion
 
       let refreshedProfile = null;
-      if (!resolvedRole) {
+      const shouldBootstrap = !profileData || !profileData.school_id || !resolvedRole;
+
+      if (shouldBootstrap) {
+        authDebug('fetchUserData:bootstrap-needed', {
+          userId,
+          hasProfile: !!profileData,
+          schoolId: profileData?.school_id ?? null,
+          resolvedRole,
+        });
+
         // Only try bootstrap if we have a valid access token
         if (accessToken) {
           await tryBootstrapUser(accessToken);
         }
-        const { data: refreshedProfileData } = await supabase
+
+        const { data: refreshedProfileData, error: refreshedProfileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', userId)
@@ -148,16 +183,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(refreshedProfile ?? profileData ?? null);
         setSchoolId(refreshedProfile?.school_id ?? profileData?.school_id ?? null);
 
-        const { data: refreshedRoles } = await supabase
+        const { data: refreshedRoles, error: refreshedRolesError } = await supabase
           .from('user_roles')
           .select('role')
           .eq('user_id', userId);
         resolvedRole =
           ROLE_PRIORITY.find((r) => (refreshedRoles ?? []).some((row) => row.role === r)) ??
           ((refreshedRoles?.[0]?.role as UserRole) ?? null);
+
+        authDebug('fetchUserData:after-bootstrap', {
+          userId,
+          hasProfile: !!refreshedProfileData,
+          schoolId: refreshedProfileData?.school_id ?? null,
+          refreshedProfileError: refreshedProfileError?.message ?? null,
+          roles: (refreshedRoles ?? []).map((row) => row.role),
+          refreshedRolesError: refreshedRolesError?.message ?? null,
+          resolvedRole,
+        });
       }
 
       setRole(resolvedRole);
+      authDebug('fetchUserData:final', {
+        userId,
+        finalProfileId: (refreshedProfile ?? profileData)?.id ?? null,
+        finalSchoolId: (refreshedProfile ?? profileData)?.school_id ?? null,
+        finalRole: resolvedRole,
+      });
       // #region agent log
       const fetchDuration = Date.now() - fetchStartTime;
       fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:149',message:'fetchUserData completed',data:{duration:fetchDuration,role:resolvedRole},timestamp:Date.now(),runId:'run1',hypothesisId:'B'})}).catch(()=>{});

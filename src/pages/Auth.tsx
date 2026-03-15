@@ -108,7 +108,7 @@ export default function Auth() {
   const lastSignupAttemptRef = useRef<number>(0);
   const signupAttemptCountRef = useRef<number>(0);
   
-  const { login, signup, logout, isAuthenticated, role, isLoading: authLoading, refreshUserData } = useAuth();
+  const { login, signup, logout, isAuthenticated, role, schoolId, isLoading: authLoading, refreshUserData } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
@@ -168,10 +168,10 @@ export default function Auth() {
   useEffect(() => {
     // Only check redirect if authLoading is false (initialization complete)
     // This allows unauthenticated users to see the form immediately
-    if (!authLoading && isAuthenticated && role) {
+    if (!authLoading && isAuthenticated && role && schoolId) {
       navigate(`/${role}`);
     }
-  }, [isAuthenticated, role, authLoading, navigate]);
+  }, [isAuthenticated, role, schoolId, authLoading, navigate]);
 
   // Real-time email validation - check immediately when typing
   useEffect(() => {
@@ -639,14 +639,14 @@ export default function Auth() {
   }
 
   // Logged in but role not loaded (fetchUserData failed or returned no role) – show retry so user is not stuck
-  if (isAuthenticated && !role && !authLoading) {
+  if (isAuthenticated && (!role || !schoolId) && !authLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-soft p-4">
         <div className="glass-card max-w-md w-full p-8 text-center">
           <AlertCircle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">Ładowanie danych konta</h2>
           <p className="text-muted-foreground text-sm mb-6">
-            Nie udało się załadować Twojej roli ani szkoły. Możliwe, że zaproszenie nie zostało jeszcze przypisane do konta. Spróbuj ponownie lub odśwież stronę.
+            Nie udało się załadować Twojej roli lub szkoły. Możliwe, że profil konta nie został jeszcze poprawnie przypisany. Spróbuj ponownie lub odśwież stronę.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button onClick={() => refreshUserData()} className="gap-2">
