@@ -198,6 +198,16 @@ serve(async (req) => {
         .eq("id", packageId);
     };
 
+    const packageStillExists = async (packageId: string) => {
+      const { data: pkg } = await supabase
+        .from("package_purchases")
+        .select("id")
+        .eq("id", packageId)
+        .maybeSingle();
+
+      return !!pkg?.id;
+    };
+
     /* =========================
        UNMARK ATTENDANCE
        ========================= */
@@ -247,6 +257,23 @@ serve(async (req) => {
         .select("id")
         .single();
       attendanceId = inserted?.id ?? null;
+    }
+
+    // If this attendance is already linked to a package, keep that link.
+    // This prevents repeated saves/comments from deducting another lesson
+    // or moving the same attendance to a different package.
+    if (existingPackageId && await packageStillExists(existingPackageId)) {
+      await recomputePackageUsage(existingPackageId);
+
+      console.log("apply-package-usage: keeping existing package", {
+        attendance_id: attendanceId,
+        package_id: existingPackageId,
+      });
+
+      return new Response(
+        JSON.stringify({ ok: true, package_id: existingPackageId }),
+        { status: 200, headers: corsHeaders }
+      );
     }
 
     const { data: packages } = await supabase
