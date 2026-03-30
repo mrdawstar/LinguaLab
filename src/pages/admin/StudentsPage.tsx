@@ -30,6 +30,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export default function StudentsPage() {
   const { students, isLoading, deleteStudent } = useStudents();
@@ -40,6 +47,7 @@ export default function StudentsPage() {
   const navigate = useNavigate();
   
   const [search, setSearch] = useState('');
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -55,12 +63,14 @@ export default function StudentsPage() {
     }
   }, [location, students, viewingStudent, navigate]);
 
-  const filteredStudents = students.filter(
-    (s) =>
+  const filteredStudents = students.filter((s) => {
+    const matchesSearch =
       s.name.toLowerCase().includes(search.toLowerCase()) ||
       s.email.toLowerCase().includes(search.toLowerCase()) ||
-      s.language.toLowerCase().includes(search.toLowerCase())
-  );
+      s.language.toLowerCase().includes(search.toLowerCase());
+    const matchesTeacher = selectedTeacherId === 'all' ? true : s.teacher_id === selectedTeacherId;
+    return matchesSearch && matchesTeacher;
+  });
 
   const getTeacherName = (id?: string | null) => teachers.find((t) => t.id === id)?.name || '-';
   const getGroupName = (id?: string | null) => groups.find((g) => g.id === id)?.name || '-';
@@ -92,14 +102,30 @@ export default function StudentsPage() {
       <div className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-6">
         {/* Header */}
         <div className="mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative w-full max-w-sm">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Szukaj uczniów..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
+          <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative w-full max-w-sm">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Szukaj uczniów..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+
+            <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
+              <SelectTrigger className="w-full sm:w-[260px]">
+                <SelectValue placeholder="Nauczyciel" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Wszyscy nauczyciele</SelectItem>
+                {teachers.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           {canManageData && (
             <Button

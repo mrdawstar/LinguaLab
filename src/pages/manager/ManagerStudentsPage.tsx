@@ -24,20 +24,31 @@ import { useTeachers } from '@/hooks/useTeachers';
 import { useGroups } from '@/hooks/useGroups';
 import { StudentDialog } from '@/components/admin/StudentDialog';
 import { cn } from '@/lib/utils';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export default function ManagerStudentsPage() {
   const { students, isLoading, deleteStudent } = useStudents();
   const { teachers } = useTeachers();
   const { groups } = useGroups();
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<typeof students[0] | null>(null);
 
-  const filteredStudents = students.filter(
-    (student) =>
+  const filteredStudents = students.filter((student) => {
+    const matchesSearch =
       student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+      student.email.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesTeacher =
+      selectedTeacherId === 'all' ? true : student.teacher_id === selectedTeacherId;
+    return matchesSearch && matchesTeacher;
+  });
 
   const getTeacherName = (id?: string | null) => {
     if (!id) return '—';
@@ -102,14 +113,29 @@ export default function ManagerStudentsPage() {
         </div>
 
         {/* Search */}
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Szukaj ucznia..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="rounded-xl pl-10"
-          />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative w-full max-w-md">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Szukaj ucznia..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="rounded-xl pl-10"
+            />
+          </div>
+          <Select value={selectedTeacherId} onValueChange={setSelectedTeacherId}>
+            <SelectTrigger className="w-full sm:w-[260px]">
+              <SelectValue placeholder="Nauczyciel" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Wszyscy nauczyciele</SelectItem>
+              {teachers.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Students Table */}

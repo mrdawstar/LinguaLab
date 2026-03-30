@@ -66,30 +66,14 @@ export function useStudents() {
 
   const deleteStudent = useMutation({
     mutationFn: async (id: string) => {
-      // First, delete related lesson_attendance records
-      const { error: attendanceError } = await supabase
-        .from('lesson_attendance')
-        .delete()
-        .eq('student_id', id);
-      if (attendanceError) throw attendanceError;
-
-      // Then, delete lessons where this student is assigned (individual lessons)
-      const { error: lessonsError } = await supabase
-        .from('lessons')
-        .delete()
-        .eq('student_id', id);
-      if (lessonsError) throw lessonsError;
-
-      // Finally, delete the student
-      const { error } = await supabase
-        .from('students')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.rpc('delete_student_with_relations', { p_student_id: id });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students', schoolId] });
       queryClient.invalidateQueries({ queryKey: ['lessons', schoolId] });
+      queryClient.invalidateQueries({ queryKey: ['payments', schoolId] });
+      queryClient.invalidateQueries({ queryKey: ['packages', schoolId] });
       toast.success('Uczeń został usunięty');
     },
     onError: (error) => {
