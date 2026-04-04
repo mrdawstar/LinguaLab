@@ -96,6 +96,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const fetchStartTime = Date.now();
     fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:85',message:'fetchUserData started',data:{userId},timestamp:Date.now(),runId:'run1',hypothesisId:'B'})}).catch(()=>{});
     // #endregion
+
+    const resolveSchoolId = async (
+      uid: string,
+      profileSchoolId: string | null | undefined
+    ): Promise<string | null> => {
+      if (profileSchoolId) return profileSchoolId;
+      const { data, error } = await supabase
+        .from('teachers')
+        .select('school_id')
+        .eq('user_id', uid)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (error) {
+        authDebug('resolveSchoolId:teachers', { uid, error: error.message });
+        return null;
+      }
+      return data?.school_id ?? null;
+    };
+
     try {
       setIsLoading(true);
       authDebug('fetchUserData:start', { userId });
@@ -124,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       setProfile(profileData ?? null);
-      setSchoolId(profileData?.school_id ?? null);
+      setSchoolId(await resolveSchoolId(userId, profileData?.school_id));
       // #region agent log
       fetch('http://127.0.0.1:7243/ingest/3e50eb41-c314-427c-becc-59b2a821ca76',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:profile',message:'Profile loaded',data:{userId, schoolId: profileData?.school_id ?? null, hasProfile: !!profileData},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
       // #endregion
@@ -181,7 +201,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .maybeSingle();
         refreshedProfile = refreshedProfileData;
         setProfile(refreshedProfile ?? profileData ?? null);
-        setSchoolId(refreshedProfile?.school_id ?? profileData?.school_id ?? null);
+        setSchoolId(
+          await resolveSchoolId(
+            userId,
+            refreshedProfile?.school_id ?? profileData?.school_id
+          )
+        );
 
         const { data: refreshedRoles, error: refreshedRolesError } = await supabase
           .from('user_roles')

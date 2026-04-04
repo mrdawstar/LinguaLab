@@ -85,14 +85,26 @@ serve(async (req) => {
     }
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    // Get user's school
+    // Get user's school: profile first, then teachers row (invited teachers may only have teachers.school_id)
     const { data: profile } = await supabaseClient
       .from("profiles")
       .select("school_id")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
 
-    if (!profile?.school_id) {
+    let schoolId = profile?.school_id ?? null;
+    if (!schoolId) {
+      const { data: teacherRow } = await supabaseClient
+        .from("teachers")
+        .select("school_id")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      schoolId = teacherRow?.school_id ?? null;
+    }
+
+    if (!schoolId) {
       return new Response(JSON.stringify({ 
         subscribed: false, 
         trial_active: false,
@@ -107,14 +119,14 @@ serve(async (req) => {
     const { data: school } = await supabaseClient
       .from("schools")
       .select("trial_ends_at, subscription_status, subscription_plan, subscription_ends_at, subscription_period_start, stripe_customer_id, created_at")
-      .eq("id", profile.school_id)
+      .eq("id", schoolId)
       .single();
 
     if (!school) {
       throw new Error("School not found");
     }
 
-    logStep("School found", { schoolId: profile.school_id, subscriptionStatus: school.subscription_status });
+    logStep("School found", { schoolId, subscriptionStatus: school.subscription_status });
 
     const now = new Date();
     

@@ -66,14 +66,13 @@ export function useGroups() {
 
   const deleteGroup = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('groups')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.rpc('delete_group_with_relations', { p_group_id: id });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['groups', schoolId] });
+      queryClient.invalidateQueries({ queryKey: ['students', schoolId] });
+      queryClient.invalidateQueries({ queryKey: ['lessons', schoolId] });
       toast.success('Grupa została usunięta');
     },
     onError: (error) => {

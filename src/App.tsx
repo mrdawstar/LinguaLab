@@ -97,6 +97,7 @@ const App = () => (
                 {/* Manager routes - protected by subscription */}
                 <Route path="/manager" element={<SubscriptionGuard><ManagerDashboard /></SubscriptionGuard>} />
                 <Route path="/manager/students" element={<SubscriptionGuard><ManagerStudentsPage /></SubscriptionGuard>} />
+                <Route path="/manager/groups" element={<SubscriptionGuard><GroupsPage /></SubscriptionGuard>} />
                 <Route path="/manager/schedule" element={<SubscriptionGuard><ManagerSchedulePage /></SubscriptionGuard>} />
                 {/* Teacher routes - protected by subscription */}
                 <Route path="/subscription-success" element={<SubscriptionSuccess />} />
